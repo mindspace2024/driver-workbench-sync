@@ -349,7 +349,7 @@ body {
   color: var(--gray-700);
   border: 1px solid var(--gray-300);
 }
-.btn-sm { padding: 6px 12px; font-size: 14px; border-radius: 6px; }
+.btn-sm { padding: 7px 12px; font-size: 14px; border-radius: 6px; white-space: nowrap; }
 .btn-block { width: 100%; }
 
 /* Review Action Buttons */
@@ -1585,7 +1585,6 @@ function updateStatsBar() {
       <button class="btn btn-outline btn-sm" onclick="openImportModal()">📥 导入</button>
       <button class="btn btn-outline btn-sm" onclick="dedupExpenses()">🔧 去重</button>
       <button class="btn btn-outline btn-sm" onclick="backupAll()">💾 备份</button>
-      <button class="btn btn-outline btn-sm" onclick="restoreAll()">📂 恢复</button>
       <button class="btn btn-outline btn-sm" onclick="exportExcel()">📊 导出</button>
     `;
   } else {
@@ -1598,16 +1597,6 @@ function updateStatsBar() {
     `;
     exportBar.onclick = openDriverPhotoModal;
   }
-
-  // Restore button for both roles (below export bar)
-  var restoreBar = document.getElementById('restoreBar');
-  if (!restoreBar) {
-    restoreBar = document.createElement('div');
-    restoreBar.id = 'restoreBar';
-    restoreBar.style.cssText = 'margin-bottom:12px';
-    document.getElementById('exportBar').after(restoreBar);
-  }
-  restoreBar.innerHTML = '<button class="btn btn-outline btn-sm" onclick="restoreAll()" style="width:100%">📂 恢复管理员分享的数据</button>';
 
   // Advance balance bar
   const balBar = document.getElementById('advanceBalanceBar');
@@ -1661,7 +1650,6 @@ function renderRecords() {
       <div class="empty-icon">📋</div>
       <p>还没有报销记录</p>
       <p style="font-size:14px;color:var(--gray-400)">点击底部「新增」开始</p>
-      ${currentRole === 'admin' ? `<button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="restoreAll()">📂 从备份恢复数据</button>` : ''}
     `;
     empty.style.display = 'block';
   } else {
