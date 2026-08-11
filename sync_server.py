@@ -10,10 +10,7 @@ import sys
 from urllib.parse import urlparse
 
 PORT = int(os.environ.get('PORT', 8080))
-# Store data in persistent directory that survives Render deploys
-DATA_DIR = '/var/data'
-os.makedirs(DATA_DIR, exist_ok=True)
-DATA_FILE = os.path.join(DATA_DIR, 'shared-data.json')
+DATA_FILE = os.path.join(os.path.dirname(__file__), 'shared-data.json')
 
 # 初始化数据文件
 if not os.path.exists(DATA_FILE):
