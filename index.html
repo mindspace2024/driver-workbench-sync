@@ -1402,6 +1402,7 @@ function pullFromServer() {
     })
     .catch(function() {
       updateSyncIndicator();
+      renderAll();
     });
 }
 
@@ -1436,11 +1437,10 @@ function init() {
   var now = new Date();
   mtdYear = now.getFullYear();
   mtdMonth = now.getMonth();
-  // Pull latest data from server, then render
-  pullFromServer();
-  updateSyncIndicator();
   switchTab('records');
-  renderAll();
+  updateSyncIndicator();
+  // Pull latest data from server, will call renderAll when done
+  pullFromServer();
   // Periodic sync
   setInterval(pullFromServer, 30000); // every 30s
 }
