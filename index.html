@@ -1596,14 +1596,11 @@ function updateStatsBar() {
       <button class="btn btn-outline btn-sm" onclick="exportExcel()">📊 导出</button>
     `;
   } else {
-    exportBar.style.display = 'block';
-    exportBar.className = 'driver-import-card';
-    exportBar.innerHTML = `
-      <div class="import-icon">📷</div>
-      <div class="import-title">拍照上传手写记录</div>
-      <div class="import-hint">拍下记账本、小票或手写记录，一键保存</div>
-    `;
-    exportBar.onclick = openDriverPhotoModal;
+    // 司机端：记录页不显示任何输入入口，统一在「新增」页处理
+    exportBar.style.display = 'none';
+    exportBar.className = 'export-bar';
+    exportBar.innerHTML = '';
+    exportBar.onclick = null;
   }
 
   // Advance balance bar
