@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: driver-workbench-sync
+    runtime: python
+    buildCommand: ""
+    startCommand: python sync_server.py
+    envVars:
+      - key: PORT
+        value: 8080

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>司机工作台 - 扫码打开</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #f9fafb;
+    padding: 20px;
+    text-align: center;
+  }
+  .card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    max-width: 340px;
+    width: 100%;
+  }
+  h1 { font-size: 22px; color: #111827; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #9ca3af; margin-bottom: 24px; }
+  .qr-wrap {
+    border: 3px solid #2563eb;
+    border-radius: 16px;
+    padding: 8px;
+    margin-bottom: 20px;
+  }
+  .qr-wrap img { width: 100%; border-radius: 10px; display: block; }
+  .tip { font-size: 13px; color: #6b7280; }
+  .url {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 16px;
+    word-break: break-all;
+    background: #f3f4f6;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🚗 司机工作台</h1>
+  <p class="subtitle">报销 · 计划 · 备用金</p>
+  <div class="qr-wrap">
+    <img src="qr.png" alt="扫码打开">
+  </div>
+  <p class="tip">📱 用手机相机扫码即可打开</p>
+  <div class="url" onclick="navigator.clipboard.writeText('https://ff50b990136942f38cc70422b2b977c0.gz5.agentos-app.net');this.textContent='已复制 ✓';setTimeout(()=>this.textContent='https://ff50b990136942f38cc70422b2b977c0.gz5.agentos-app.net',1500)">
+    https://ff50b990136942f38cc70422b2b977c0.gz5.agentos-app.net
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,3124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="司机工作台">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
+<title>司机工作台</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --primary: #2563eb;
+  --primary-light: #eff6ff;
+  --success: #16a34a;
+  --success-light: #f0fdf4;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  --warning: #f59e0b;
+  --warning-light: #fffbeb;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+  font-size: 15px;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Header */
+.header {
+  background: white;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--gray-200);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-900);
+  flex: 1;
+}
+.role-toggle {
+  display: flex;
+  background: var(--gray-100);
+  border-radius: 20px;
+  padding: 2px;
+  gap: 2px;
+}
+.role-toggle button {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 18px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--gray-500);
+  transition: all 0.2s;
+}
+.role-toggle button.active {
+  background: white;
+  color: var(--primary);
+  box-shadow: var(--shadow);
+  font-weight: 600;
+}
+
+/* Stats Bar */
+.stats-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.stat-card {
+  flex: 1;
+  min-width: 80px;
+  background: white;
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.stat-card .stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+.stat-card .stat-label {
+  font-size: 15px;
+  color: var(--gray-400);
+  margin-top: 2px;
+}
+.stat-card.pending .stat-value { color: var(--warning); }
+.stat-card.approved .stat-value { color: var(--success); }
+.stat-card.rejected .stat-value { color: var(--danger); }
+.stat-card.total .stat-value { color: var(--primary); }
+
+/* Main Content */
+.main-content {
+  padding: 0 16px 80px;
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.filter-chip {
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--gray-200);
+  background: white;
+  font-size: 15px;
+  cursor: pointer;
+  color: var(--gray-600);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.filter-chip.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.filter-select {
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--gray-200);
+  background: white;
+  font-size: 15px;
+  color: var(--gray-600);
+  cursor: pointer;
+}
+
+/* Expense Card */
+.expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.expense-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.expense-card:active { transform: scale(0.99); }
+.expense-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.expense-card .expense-type {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+.expense-card .expense-amount {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+.expense-card .expense-amount::before { content: '¥'; font-size: 14px; }
+.expense-card .card-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--gray-400);
+  margin-bottom: 6px;
+}
+.expense-card .card-desc {
+  font-size: 15px;
+  color: var(--gray-600);
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.expense-card .card-photo {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--gray-200);
+  margin-top: 6px;
+}
+.status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.status-badge.pending { background: var(--warning-light); color: #92400e; }
+.status-badge.approved { background: var(--success-light); color: #166534; }
+.status-badge.rejected { background: var(--danger-light); color: #991b1b; }
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--gray-400);
+}
+.empty-state .empty-icon { font-size: 56px; margin-bottom: 12px; }
+.empty-state p { font-size: 16px; }
+
+/* Form */
+.form-section {
+  display: none;
+}
+.form-section.active { display: block; }
+.form-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.form-group {
+  margin-bottom: 16px;
+}
+.form-group label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 6px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 15px;
+  color: var(--gray-800);
+  background: var(--gray-50);
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* Photo Upload */
+.photo-upload {
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--gray-400);
+}
+.photo-upload:active { background: var(--gray-50); border-color: var(--primary); }
+.photo-upload.has-photo {
+  border-style: solid;
+  border-color: var(--success);
+  padding: 0;
+}
+.photo-preview {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+  display: none;
+}
+.photo-preview.show { display: block; }
+.photo-remove {
+  display: none;
+  margin-top: 8px;
+  color: var(--danger);
+  font-size: 15px;
+  cursor: pointer;
+}
+.photo-remove.show { display: inline-block; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  gap: 6px;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  width: 100%;
+}
+.btn-primary:hover { background: #1d4ed8; }
+.btn-success { background: var(--success); color: white; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-outline {
+  background: white;
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+}
+.btn-sm { padding: 6px 12px; font-size: 14px; border-radius: 6px; }
+.btn-block { width: 100%; }
+
+/* Review Action Buttons */
+.review-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gray-100);
+}
+.review-actions .btn { flex: 1; }
+
+/* Review Note */
+.review-note {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin-top: 6px;
+  font-style: italic;
+  background: var(--gray-50);
+  padding: 6px 8px;
+  border-radius: 6px;
+  display: none;
+}
+.review-note.show { display: block; }
+.review-note.rejected { background: var(--danger-light); color: #991b1b; }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: white;
+  border-radius: 16px 16px 0 0;
+  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+.modal h3 { font-size: 16px; margin-bottom: 16px; color: var(--gray-900); }
+.modal .form-group textarea { min-height: 80px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.modal-actions .btn { flex: 1; }
+
+/* Detail Modal */
+.detail-photo {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* Export Bar */
+.export-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.export-bar .btn { flex: 1; }
+
+/* Bottom Nav */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: white;
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--gray-400);
+  transition: color 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  gap: 2px;
+}
+.nav-item .nav-icon { font-size: 22px; }
+.nav-item.active { color: var(--primary); }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gray-800);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 15px;
+  z-index: 300;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* Desktop tweaks */
+@media (min-width: 481px) {
+  body {
+    border-left: 1px solid var(--gray-200);
+    border-right: 1px solid var(--gray-200);
+  }
+  .expense-card:hover { box-shadow: var(--shadow-md); }
+}
+
+/* Drivers page */
+.driver-select {
+  margin-bottom: 12px;
+}
+.driver-select select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--gray-800);
+  background: white;
+}
+
+/* Section title */
+.section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.section-title .count {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-400);
+  margin-left: auto;
+}
+
+/* Calendar */
+.calendar-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.calendar-header .month-label {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+.calendar-header button {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--gray-200);
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--gray-600);
+  display: flex; align-items: center; justify-content: center;
+}
+.calendar-header button:active { background: var(--gray-100); }
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 15px;
+  color: var(--gray-400);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.calendar-weekdays span:first-child,
+.calendar-weekdays span:last-child { color: #dc2626; }
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  position: relative;
+  color: var(--gray-700);
+  transition: background 0.15s;
+}
+.calendar-day:hover { background: var(--gray-100); }
+.calendar-day.other-month { color: var(--gray-300); }
+.calendar-day.today {
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-light);
+}
+.calendar-day.selected {
+  background: var(--primary);
+  color: white;
+}
+.calendar-day .day-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+  position: absolute;
+  bottom: 3px;
+}
+.calendar-day .day-dot.trip { background: #8b5cf6; }
+.calendar-day .day-dot.expense { background: var(--primary); }
+
+/* Trip Plan Card */
+.trip-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow);
+  margin-bottom: 10px;
+  cursor: pointer;
+  border-left: 3px solid #8b5cf6;
+}
+.trip-card:active { transform: scale(0.99); }
+.trip-card.completed { border-left-color: var(--success); }
+.trip-card.cancelled { border-left-color: var(--gray-300); opacity: 0.7; }
+.trip-card .trip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+.trip-card .trip-dest {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+.trip-card .trip-purpose {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+.trip-card .trip-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--gray-400);
+  flex-wrap: wrap;
+}
+.trip-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.trip-badge.planned { background: #ede9fe; color: #5b21b6; }
+.trip-badge.completed { background: var(--success-light); color: #166534; }
+.trip-badge.cancelled { background: var(--gray-100); color: var(--gray-500); }
+
+/* Trip section toggle */
+.trip-section-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.trip-section-toggle button {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--gray-200);
+  background: white;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--gray-600);
+}
+.trip-section-toggle button.active {
+  background: #8b5cf6;
+  color: white;
+  border-color: #8b5cf6;
+}
+.trip-section-toggle button.active.admin-dispatch {
+  background: #ea580c;
+  color: white;
+  border-color: #ea580c;
+}
+
+/* Dispatch trip card */
+.trip-card.dispatched {
+  border-left-color: #ea580c;
+}
+.trip-card .dispatch-tag {
+  font-size: 15px;
+  color: #ea580c;
+  background: #fff7ed;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 4px;
+}
+.trip-card .driver-action-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gray-100);
+}
+.trip-card .driver-action-bar .btn { flex: 1; }
+
+/* Selected date label in plan tab */
+.selected-date-label {
+  font-size: 15px;
+  color: var(--gray-500);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.selected-date-label strong {
+  color: var(--primary);
+  font-size: 15px;
+}
+
+/* Expense-Trip link indicator */
+.expense-card .linked-trip {
+  font-size: 15px;
+  color: #8b5cf6;
+  background: #ede9fe;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+/* MTD Summary */
+.mtd-summary {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.mtd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.mtd-header .mtd-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-900);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mtd-header .mtd-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+.mtd-month-nav button {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--gray-200);
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--gray-500);
+  display: flex; align-items: center; justify-content: center;
+}
+.mtd-month-nav button:active { background: var(--gray-100); }
+.mtd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.mtd-table th {
+  text-align: left;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-400);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--gray-100);
+}
+.mtd-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--gray-50);
+  color: var(--gray-700);
+}
+.mtd-table tr:last-child td { border-bottom: none; }
+.mtd-table .mtd-amount {
+  text-align: right;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+.mtd-table .mtd-count {
+  text-align: right;
+  color: var(--gray-400);
+  font-size: 14px;
+}
+.mtd-table .mtd-bar-wrap {
+  width: 40%;
+}
+.mtd-table .mtd-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--primary);
+  opacity: 0.2;
+  min-width: 2px;
+}
+.mtd-total-row {
+  font-weight: 700;
+  background: var(--gray-50);
+}
+.mtd-total-row td {
+  padding: 10px 14px;
+  border-top: 2px solid var(--gray-200);
+  color: var(--gray-900);
+}
+.mtd-toggle {
+  font-size: 15px;
+  color: var(--gray-400);
+  transition: transform 0.2s;
+}
+.mtd-toggle.open { transform: rotate(180deg); }
+
+/* Admin PIN */
+.pin-input {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: 10px;
+  font-size: 24px;
+  text-align: center;
+  letter-spacing: 12px;
+  font-family: monospace;
+  color: var(--gray-900);
+}
+.pin-input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
+.pin-hint { font-size:14px; color:var(--gray-400); text-align:center; margin-top:8px; }
+
+/* Data warning */
+.data-warning {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+.data-warning .dw-btn {
+  font-size: 15px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #f59e0b;
+  background: white;
+  color: #92400e;
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Driver photo import card */
+.driver-import-card {
+  background: white;
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  text-align: center;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.driver-import-card:active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+.driver-import-card .import-icon { font-size: 36px; margin-bottom: 8px; }
+.driver-import-card .import-title { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+.driver-import-card .import-hint { font-size: 14px; color: var(--gray-400); margin-top: 4px; }
+
+/* Handwritten photo archive */
+.photo-archive {
+  margin-bottom: 12px;
+}
+.photo-archive-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-700);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.photo-archive-title .archive-count {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--gray-400);
+  margin-left: auto;
+}
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.photo-grid-item {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  background: var(--gray-100);
+}
+.photo-grid-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-grid-item .photo-date {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+.photo-grid-item .photo-del {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: rgba(220,38,38,0.85);
+  color: white;
+  border-radius: 50%;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Archive photo viewer */
+.archive-viewer {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.archive-viewer img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.archive-viewer .viewer-info {
+  color: rgba(255,255,255,0.7);
+  font-size: 15px;
+  margin-top: 12px;
+  text-align: center;
+}
+.archive-viewer .viewer-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+}
+.advance-balance-bar {
+  border: 1px solid #67e8f9;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.advance-balance-bar .adv-label {
+  font-size: 14px;
+  color: #0e7490;
+  font-weight: 500;
+}
+.advance-balance-bar .adv-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0891b2;
+}
+.advance-balance-bar .adv-amount::before { content: '¥'; font-size: 15px; }
+.advance-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #ecfeff;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 15px;
+  color: #0e7490;
+  cursor: pointer;
+}
+.advance-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: #0891b2; }
+.expense-card .advance-tag {
+  font-size: 15px;
+  color: #0891b2;
+  background: #ecfeff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 4px;
+}
+.expense-card .advance-tag.received { background: #f0fdf4; color: #166534; }
+.expense-card .advance-tag.unreceived { background: #fffbeb; color: #92400e; }
+.expense-card.advance-card {
+  border-left: 3px solid #0891b2;
+}
+
+/* Advance receive info in card */
+.advance-receive-info {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #f0fdf4;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #166534;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.advance-receive-info .receive-method {
+  background: white;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.advance-receive-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gray-100);
+}
+.advance-receive-actions .btn { flex: 1; }
+
+/* Receive modal */
+#receiveModal .method-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.method-option {
+  flex: 1;
+  min-width: 70px;
+  padding: 10px 8px;
+  border: 2px solid var(--gray-200);
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--gray-600);
+  transition: all 0.2s;
+  background: white;
+}
+.method-option.active {
+  border-color: #0891b2;
+  background: #ecfeff;
+  color: #0891b2;
+  font-weight: 600;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>🚗 司机工作台</h1>
+  <span id="syncStatus" style="font-size:12px;color:var(--gray-400)"></span>
+  <div class="role-toggle">
+    <button id="roleDriver" class="active" onclick="switchRole('driver')">司机</button>
+    <button id="roleAdmin" onclick="switchRole('admin')">管理</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Content Area -->
+<div id="tabRecords" class="main-content tab-content">
+  <!-- Stats -->
+  <div class="stats-bar" id="statsBar"></div>
+  <!-- Advance balance bar -->
+  <div class="advance-balance-bar" id="advanceBalanceBar" style="display:none">
+    <div>
+      <div class="adv-label">🏦 可用备用金</div>
+      <div style="font-size:15px;color:#0e7490;margin-top:2px">已批备用金 - 已抵扣报销</div>
+    </div>
+    <div class="adv-amount" id="advanceBalDisplay">0</div>
+  </div>
+  <!-- MTD Summary -->
+  <div class="mtd-summary" id="mtdSummary"></div>
+  <!-- Filters -->
+  <div class="filters" id="filterBar"></div>
+  <!-- Export bar (admin only) -->
+  <div class="export-bar" id="exportBar"></div>
+  <!-- Photo archive -->
+  <div class="photo-archive" id="photoArchive" style="display:none"></div>
+  <!-- List -->
+  <div class="expense-list" id="expenseList"></div>
+  <div class="empty-state" id="emptyState" style="display:none">
+    <div class="empty-icon">📋</div>
+    <p>还没有报销记录</p>
+    <p style="font-size:14px;color:var(--gray-400)">点击底部「新增」开始</p>
+  </div>
+</div>
+
+<div id="tabAdd" class="main-content tab-content" style="display:none">
+  <div class="form-card">
+    <div class="section-title">📝 新增报销</div>
+    <form id="expenseForm" onsubmit="submitExpense(event)">
+      <div class="form-group">
+        <label>日期 *</label>
+        <input type="date" id="formDate" required>
+      </div>
+      <div class="form-group">
+        <label>费用类型 *</label>
+        <select id="formType" required onchange="updateAdvanceCheckbox()">
+          <option value="">请选择</option>
+          <option value="备用金">备用金</option>
+          <option value="加油/充电">加油/充电</option>
+          <option value="过路费">过路费</option>
+          <option value="停车费">停车费</option>
+          <option value="维修保养">维修保养</option>
+          <option value="违章罚款">违章罚款</option>
+          <option value="洗车">洗车</option>
+          <option value="差旅住宿费">差旅住宿费</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>金额（元）*</label>
+        <input type="number" id="formAmount" step="0.01" min="0.01" placeholder="0.00" required>
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="formDesc" placeholder="可选，补充说明..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>票据照片</label>
+        <div class="photo-upload" id="photoUpload" onclick="document.getElementById('photoInput').click()">
+          <div>📷 点击拍照或选择照片</div>
+          <img class="photo-preview" id="photoPreview" alt="">
+          <span class="photo-remove" id="photoRemove" onclick="removePhoto(event)">✕ 删除照片</span>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+      </div>
+      <!-- Advance deduction checkbox -->
+      <div id="advanceCheckbox" style="display:none" class="advance-checkbox" onclick="document.getElementById('useAdvance').click()">
+        <input type="checkbox" id="useAdvance"> <span>从备用金余额抵扣（余额 <strong id="advanceBalText">¥0</strong>）</span>
+      </div>
+      <!-- Trip link hint -->
+      <div id="tripLinkHint"></div>
+      <button type="submit" class="btn btn-primary">✓ 提交报销</button>
+    </form>
+  </div>
+</div>
+
+<div id="tabReview" class="main-content tab-content" style="display:none">
+  <div id="reviewContent"></div>
+</div>
+
+<div id="tabPlan" class="main-content tab-content" style="display:none">
+  <!-- Calendar -->
+  <div class="calendar-card" id="calendarCard"></div>
+  <!-- Trip section toggle -->
+  <div class="trip-section-toggle" id="tripToggles">
+    <button id="tripToggleDay" class="active" onclick="switchTripView('day')">📅 当日计划</button>
+    <button id="tripToggleAll" onclick="switchTripView('all')">📋 全部计划</button>
+    <button id="tripToggleAdd" onclick="switchTripView('add')">➕ 新增计划</button>
+  </div>
+  <!-- Content area -->
+  <div id="tripContentView"></div>
+</div>
+
+<!-- Trip Plan Modal -->
+<div class="modal-overlay" id="tripDetailModal">
+  <div class="modal" id="tripDetailContent"></div>
+</div>
+
+<!-- Advance Receive Modal -->
+<div class="modal-overlay" id="receiveModal">
+  <div class="modal">
+    <h3>💰 标记备用金领用</h3>
+    <div id="receiveModalBody"></div>
+    <div class="form-group">
+      <label>领用方式 *</label>
+      <div class="method-options" id="methodOptions">
+        <div class="method-option active" onclick="selectMethod('微信转账', this)">💬 微信转账</div>
+        <div class="method-option" onclick="selectMethod('现金', this)">💵 现金</div>
+        <div class="method-option" onclick="selectMethod('银行转账', this)">🏦 银行转账</div>
+        <div class="method-option" onclick="selectMethod('其他', this)">📌 其他</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>领用日期 *</label>
+      <input type="date" id="receiveDate">
+    </div>
+    <div class="form-group">
+      <label>实际领用金额（元）*</label>
+      <input type="number" id="receiveAmount" step="0.01" min="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label>备注（可选）</label>
+      <textarea id="receiveNote" placeholder="可选，补充说明..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeReceiveModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmReceive()">✓ 确认领用</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin PIN Modal -->
+<div class="modal-overlay" id="pinModal">
+  <div class="modal">
+    <h3>🔒 管理员验证</h3>
+    <p style="color:var(--gray-500);font-size:15px;margin-bottom:16px">请输入管理密码</p>
+    <div class="form-group">
+      <input type="password" id="pinInput" class="pin-input" maxlength="6" placeholder="····" onkeydown="if(event.key==='Enter')verifyPin()">
+    </div>
+    <p class="pin-hint">默认密码：0000</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closePinModal()">取消</button>
+      <button class="btn btn-primary" onclick="verifyPin()">✓ 验证</button>
+    </div>
+  </div>
+</div>
+
+<!-- Driver Photo Modal -->
+<div class="modal-overlay" id="driverPhotoModal">
+  <div class="modal">
+    <h3>📷 拍照上传手写记录</h3>
+    <p style="color:var(--gray-500);font-size:15px;margin-bottom:12px">拍下记账本、小票或手写记录，保存为历史凭证</p>
+    <div class="form-group">
+      <label>记录日期</label>
+      <input type="date" id="driverPhotoDate">
+    </div>
+    <div class="form-group">
+      <label>备注（可选）</label>
+      <textarea id="driverPhotoNote" placeholder="可选，比如「7月上半月记录」" style="min-height:50px"></textarea>
+    </div>
+    <div class="form-group">
+      <label>拍照</label>
+      <div class="photo-upload" id="driverPhotoUploadArea" onclick="document.getElementById('driverPhotoInput').click()">
+        <div>📷 点击拍照或选择照片</div>
+        <img class="photo-preview" id="driverPhotoPreviewImg" alt="">
+        <span class="photo-remove" id="driverPhotoRemoveBtn" onclick="removeDriverPhoto(event)">✕ 删除照片</span>
+      </div>
+      <input type="file" id="driverPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleDriverPhoto(event)">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeDriverPhotoModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveDriverPhoto()">✓ 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <h3>📥 导入历史数据</h3>
+    <p style="color:var(--gray-500);font-size:15px;margin-bottom:12px">粘贴 JSON 数据，导入历史报销和备用金记录</p>
+    <div class="form-group">
+      <label>JSON 数据</label>
+      <textarea id="importJson" style="min-height:140px;font-family:monospace;font-size:14px" placeholder='粘贴 JSON 数组...'></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:8px">
+      <label style="color:var(--gray-400);font-size:14px">📷 凭证照片（可选，不上传也能导入）</label>
+      <div class="photo-upload" id="importPhotoUpload" onclick="document.getElementById('importPhotoInput').click()" style="padding:12px;font-size:14px">
+        <div>📷 点击上传手写记录照片（可跳过）</div>
+        <img class="photo-preview" id="importPhotoPreview" alt="">
+        <span class="photo-remove" id="importPhotoRemove" onclick="removeImportPhoto(event)">✕ 删除照片</span>
+      </div>
+      <input type="file" id="importPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleImportPhoto(event)">
+    </div>
+    <p style="font-size:14px;color:var(--gray-400);margin-bottom:8px">💡 JSON 格式：<code>[{"date":"2026-07-03","type":"加油/充电","amount":320,"description":""}]</code>，导入后自动标记「已通过」</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeImportModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmImport()">✓ 导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal-overlay" id="reviewModal">
+  <div class="modal">
+    <h3 id="reviewModalTitle">审核报销</h3>
+    <div id="reviewModalBody"></div>
+    <div class="form-group">
+      <label>审核备注（可选）</label>
+      <textarea id="reviewNote" placeholder="通过可不填，拒绝建议写明原因"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="confirmReview('rejected')">✕ 拒绝</button>
+      <button class="btn btn-success" onclick="confirmReview('approved')">✓ 通过</button>
+    </div>
+    <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="closeReviewModal()">取消</button>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" id="detailModalContent"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <button class="nav-item active" id="navRecords" onclick="switchTab('records')">
+    <span class="nav-icon">📋</span> 记录
+  </button>
+  <button class="nav-item" id="navAdd" onclick="switchTab('add')">
+    <span class="nav-icon">➕</span> 新增
+  </button>
+  <button class="nav-item" id="navPlan" onclick="switchTab('plan')">
+    <span class="nav-icon">📅</span> 计划
+  </button>
+  <button class="nav-item" id="navReview" onclick="switchTab('review')">
+    <span class="nav-icon">✅</span> 审核
+  </button>
+</div>
+
+<script>
+// ============ Data Layer ============
+const STORAGE_KEY = 'driver_expenses';
+
+function loadData() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch { return []; }
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  debouncePushToServer();
+}
+
+// ============ Cloud Sync ============
+// 修改这个地址指向你的同步服务器
+var SYNC_SERVER = window.location.origin;
+var syncLastTime = null;
+var syncPending = false;
+var syncDebounceTimer = null;
+
+function debouncePushToServer() {
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(pushAllToServer, 500);
+}
+
+function pushAllToServer() {
+  var backup = {
+    expenses: JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'),
+    trips: JSON.parse(localStorage.getItem('driver_trips') || '[]'),
+    handwritten: JSON.parse(localStorage.getItem('driver_handwritten') || '[]')
+  };
+
+  fetch(SYNC_SERVER + '/api/data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(backup)
+  }).then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) { syncLastTime = d.updatedAt; updateSyncIndicator(); }
+    })
+    .catch(function() {
+      // Server unavailable, data stays in localStorage
+      updateSyncIndicator();
+    });
+}
+
+function pullFromServer() {
+  fetch(SYNC_SERVER + '/api/data')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.expenses && data.expenses.length > 0) {
+        // Only overwrite if server has more data
+        var localExp = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        if (data.expenses.length >= localExp.length) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data.expenses));
+        }
+      }
+      if (data.trips && data.trips.length > 0) {
+        var localTrips = JSON.parse(localStorage.getItem('driver_trips') || '[]');
+        if (data.trips.length >= localTrips.length) {
+          localStorage.setItem('driver_trips', JSON.stringify(data.trips));
+        }
+      }
+      if (data.handwritten && data.handwritten.length > 0) {
+        var localHw = JSON.parse(localStorage.getItem('driver_handwritten') || '[]');
+        if (data.handwritten.length >= localHw.length) {
+          localStorage.setItem('driver_handwritten', JSON.stringify(data.handwritten));
+        }
+      }
+      syncLastTime = data.updatedAt || new Date().toISOString();
+      updateSyncIndicator();
+      renderAll();
+    })
+    .catch(function() {
+      updateSyncIndicator();
+    });
+}
+
+function updateSyncIndicator() {
+  var el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (syncLastTime) {
+    var t = new Date(syncLastTime);
+    el.innerHTML = '🟢 已同步 ' + t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+    el.style.color = '#166534';
+  } else {
+    el.innerHTML = '🟡 仅本地';
+    el.style.color = '#92400e';
+  }
+}
+
+// ============ State ============
+let currentRole = 'driver';
+let currentTab = 'records';
+let currentFilter = 'all';
+let currentPhotoData = null;
+let importPhotoData = null;
+let driverPhotoData = null;
+let editingId = null;
+let reviewingId = null;
+let mtdYear, mtdMonth;
+let mtdCollapsed = false;
+
+// ============ Init ============
+function init() {
+  document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
+  var now = new Date();
+  mtdYear = now.getFullYear();
+  mtdMonth = now.getMonth();
+  // Pull latest data from server, then render
+  pullFromServer();
+  updateSyncIndicator();
+  switchTab('records');
+  renderAll();
+  // Periodic sync
+  setInterval(pullFromServer, 30000); // every 30s
+}
+
+// ============ Role Switch ============
+function switchRole(role) {
+  if (role === 'admin') {
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinModal').classList.add('show');
+    setTimeout(function(){ document.getElementById('pinInput').focus(); }, 200);
+    return;
+  }
+  applyRole('driver');
+}
+
+function verifyPin() {
+  const pin = document.getElementById('pinInput').value;
+  const correct = localStorage.getItem('admin_pin') || '0000';
+  if (pin === correct) {
+    document.getElementById('pinModal').classList.remove('show');
+    document.getElementById('pinInput').value = '';
+    applyRole('admin');
+  } else {
+    showToast('密码错误');
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinInput').focus();
+  }
+}
+
+function closePinModal() {
+  document.getElementById('pinModal').classList.remove('show');
+  document.getElementById('pinInput').value = '';
+}
+
+function applyRole(role) {
+  currentRole = role;
+  document.getElementById('roleDriver').classList.toggle('active', role === 'driver');
+  document.getElementById('roleAdmin').classList.toggle('active', role === 'admin');
+  currentFilter = 'all';
+  renderAll();
+}
+
+document.getElementById('pinModal').addEventListener('click', function(e) {
+  if (e.target === this) closePinModal();
+});
+
+// ============ Tab Switch ============
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+  if (tab === 'records') {
+    document.getElementById('tabRecords').style.display = 'block';
+    document.getElementById('navRecords').classList.add('active');
+  } else if (tab === 'add') {
+    document.getElementById('tabAdd').style.display = 'block';
+    document.getElementById('navAdd').classList.add('active');
+  } else if (tab === 'review') {
+    document.getElementById('tabReview').style.display = 'block';
+    document.getElementById('navReview').classList.add('active');
+  } else if (tab === 'plan') {
+    document.getElementById('tabPlan').style.display = 'block';
+    document.getElementById('navPlan').classList.add('active');
+  }
+  renderAll();
+}
+
+// ============ Render ============
+function renderAll() {
+  if (currentTab === 'records') renderRecords();
+  else if (currentTab === 'review') renderReview();
+  else if (currentTab === 'plan') renderPlan();
+  updateStatsBar();
+}
+
+function getFilteredExpenses() {
+  let expenses = loadData();
+  if (currentRole === 'driver') {
+    expenses = expenses.filter(e => e.role === 'driver' || e.submittedBy === 'driver');
+  }
+  if (currentFilter !== 'all') {
+    expenses = expenses.filter(e => e.status === currentFilter);
+  }
+  // Sort by date desc, then createdAt desc
+  expenses.sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+  return expenses;
+}
+
+function updateStatsBar() {
+  const expenses = loadData().filter(e => currentRole === 'driver' ? (e.role === 'driver' || e.submittedBy === 'driver') : true);
+  const total = expenses.filter(e => e.type !== '备用金').reduce((s, e) => s + e.amount, 0);
+  const pending = expenses.filter(e => e.status === 'pending');
+  const approved = expenses.filter(e => e.status === 'approved');
+  const rejected = expenses.filter(e => e.status === 'rejected');
+
+  // Advance balance: sum of approved AND received advances minus deducted expenses
+  const approvedAdvances = expenses.filter(e => e.type === '备用金' && e.status === 'approved' && e.advanceReceived);
+  const advanceTotal = approvedAdvances.reduce((s, e) => s + (e.advanceReceivedAmount || e.amount), 0);
+  const deducted = expenses.filter(e => e.advanceDeducted).reduce((s, e) => s + e.amount, 0);
+  const advanceBalance = advanceTotal - deducted;
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-card total">
+      <div class="stat-value">¥${total.toFixed(0)}</div>
+      <div class="stat-label">合计</div>
+    </div>
+    <div class="stat-card advance">
+      <div class="stat-value">¥${advanceBalance.toFixed(0)}</div>
+      <div class="stat-label">备用金余额</div>
+    </div>
+    <div class="stat-card pending">
+      <div class="stat-value">${pending.length}</div>
+      <div class="stat-label">待审核</div>
+    </div>
+    <div class="stat-card approved">
+      <div class="stat-value">${approved.length}</div>
+      <div class="stat-label">已通过</div>
+    </div>
+  `;
+
+  // Update filter bar
+  const statuses = [
+    { value: 'all', label: '全部' },
+    { value: 'pending', label: '待审核' },
+    { value: 'approved', label: '已通过' },
+    { value: 'rejected', label: '已拒绝' },
+  ];
+  document.getElementById('filterBar').innerHTML = statuses.map(s =>
+    `<button class="filter-chip ${currentFilter === s.value ? 'active' : ''}" onclick="setFilter('${s.value}')">${s.label}</button>`
+  ).join('');
+
+  // Toolbar: driver gets photo card, admin gets full import+export
+  const exportBar = document.getElementById('exportBar');
+  if (currentRole === 'admin') {
+    exportBar.style.display = 'flex';
+    exportBar.className = 'export-bar';
+    exportBar.innerHTML = `
+      <button class="btn btn-outline btn-sm" onclick="openImportModal()">📥 导入</button>
+      <button class="btn btn-outline btn-sm" onclick="dedupExpenses()">🔧 去重</button>
+      <button class="btn btn-outline btn-sm" onclick="backupAll()">💾 备份</button>
+      <button class="btn btn-outline btn-sm" onclick="restoreAll()">📂 恢复</button>
+      <button class="btn btn-outline btn-sm" onclick="exportExcel()">📊 导出</button>
+    `;
+  } else {
+    exportBar.style.display = 'block';
+    exportBar.className = 'driver-import-card';
+    exportBar.innerHTML = `
+      <div class="import-icon">📷</div>
+      <div class="import-title">拍照上传手写记录</div>
+      <div class="import-hint">拍下记账本、小票或手写记录，一键保存</div>
+    `;
+    exportBar.onclick = openDriverPhotoModal;
+  }
+
+  // Restore button for both roles (below export bar)
+  var restoreBar = document.getElementById('restoreBar');
+  if (!restoreBar) {
+    restoreBar = document.createElement('div');
+    restoreBar.id = 'restoreBar';
+    restoreBar.style.cssText = 'margin-bottom:12px';
+    document.getElementById('exportBar').after(restoreBar);
+  }
+  restoreBar.innerHTML = '<button class="btn btn-outline btn-sm" onclick="restoreAll()" style="width:100%">📂 恢复管理员分享的数据</button>';
+
+  // Advance balance bar
+  const balBar = document.getElementById('advanceBalanceBar');
+  const balDisplay = document.getElementById('advanceBalDisplay');
+  if (advanceBalance > 0) {
+    balBar.style.display = 'flex';
+    balDisplay.textContent = advanceBalance.toFixed(2);
+  } else {
+    balBar.style.display = 'none';
+  }
+
+  // Update advance checkbox in add form
+  updateAdvanceCheckbox();
+}
+
+function updateAdvanceCheckbox() {
+  const expenses = loadData();
+  const advanceTotal = expenses.filter(e => e.type === '备用金' && e.status === 'approved' && e.advanceReceived).reduce((s, e) => s + (e.advanceReceivedAmount || e.amount), 0);
+  const deducted = expenses.filter(e => e.advanceDeducted).reduce((s, e) => s + e.amount, 0);
+  const balance = advanceTotal - deducted;
+  const cb = document.getElementById('advanceCheckbox');
+  const type = document.getElementById('formType').value;
+
+  if (balance > 0 && type !== '备用金' && type !== '') {
+    cb.style.display = 'flex';
+    document.getElementById('advanceBalText').textContent = '¥' + balance.toFixed(2);
+  } else {
+    cb.style.display = 'none';
+    document.getElementById('useAdvance').checked = false;
+  }
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+  renderAll();
+}
+
+function renderRecords() {
+  const expenses = getFilteredExpenses();
+  const list = document.getElementById('expenseList');
+  const empty = document.getElementById('emptyState');
+
+  renderMtd();
+  renderPhotoArchive();
+
+  if (expenses.length === 0) {
+    list.innerHTML = '';
+    // Show restore hint if no data
+    const hasBackup = localStorage.getItem('driver_handwritten');
+    document.getElementById('emptyState').innerHTML = `
+      <div class="empty-icon">📋</div>
+      <p>还没有报销记录</p>
+      <p style="font-size:14px;color:var(--gray-400)">点击底部「新增」开始</p>
+      ${currentRole === 'admin' ? `<button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="restoreAll()">📂 从备份恢复数据</button>` : ''}
+    `;
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    list.innerHTML = expenses.map(e => renderExpenseCard(e)).join('');
+  }
+}
+
+function renderMtd() {
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const expenses = loadData().filter(e => {
+    if (currentRole === 'driver' && e.role !== 'driver' && e.submittedBy !== 'driver') return false;
+    const d = new Date(e.date);
+    return d.getFullYear() === mtdYear && d.getMonth() === mtdMonth;
+  });
+
+  // Group by type and exclude 备用金 (show separately)
+  const grouped = {};
+  let advanceIn = 0, advanceOut = 0;
+  expenses.forEach(e => {
+    if (e.type === '备用金') {
+      if (e.status === 'approved') advanceIn += (e.advanceReceivedAmount || e.amount);
+    } else {
+      if (!grouped[e.type]) grouped[e.type] = { count: 0, amount: 0 };
+      grouped[e.type].count++;
+      grouped[e.type].amount += e.amount;
+      if (e.advanceDeducted) advanceOut += e.amount;
+    }
+  });
+
+  const entries = Object.entries(grouped).sort((a, b) => b[1].amount - a[1].amount);
+  const grandTotal = entries.reduce((s, [,v]) => s + v.amount, 0);
+  const maxAmount = entries.length > 0 ? Math.max(...entries.map(([,v]) => v.amount)) : 1;
+
+  const typeEmoji = {
+    '加油/充电': '⛽', '过路费': '🛣️', '停车费': '🅿️',
+    '维修保养': '🔧', '违章罚款': '⚠️', '洗车': '🧽',
+    '差旅住宿费': '🏨', '其他': '📌'
+  };
+
+  let html = `<div class="mtd-header" onclick="toggleMtd()">
+    <span class="mtd-title">📊 MTD 分类汇总</span>
+    <div class="mtd-month-nav" onclick="event.stopPropagation()">
+      <button onclick="navMtdMonth(-1)">◀</button>
+      <span>${mtdYear}年 ${months[mtdMonth]}</span>
+      <button onclick="navMtdMonth(1)">▶</button>
+    </div>
+    <span class="mtd-toggle ${mtdCollapsed ? '' : 'open'}">▼</span>
+  </div>`;
+
+  if (!mtdCollapsed) {
+    if (entries.length === 0) {
+      html += `<div style="padding:16px;text-align:center;color:var(--gray-400);font-size:15px">本月暂无报销数据</div>`;
+    } else {
+      html += `<table class="mtd-table">
+        <thead><tr><th>类型</th><th>金额</th><th>笔数</th><th>占比</th></tr></thead><tbody>`;
+
+      entries.forEach(([type, data]) => {
+        const pct = grandTotal > 0 ? ((data.amount / grandTotal) * 100).toFixed(1) : 0;
+        const barPct = (data.amount / maxAmount) * 100;
+        html += `<tr>
+          <td>${typeEmoji[type]||'📌'} ${type}</td>
+          <td class="mtd-amount">¥${data.amount.toFixed(2)}</td>
+          <td class="mtd-count">${data.count}笔</td>
+          <td class="mtd-bar-wrap">
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="mtd-bar" style="width:${Math.max(2, barPct)}%"></div>
+              <span style="font-size:15px;color:var(--gray-400)">${pct}%</span>
+            </div>
+          </td>
+        </tr>`;
+      });
+
+      html += `<tr class="mtd-total-row">
+        <td>📋 合计</td>
+        <td class="mtd-amount">¥${grandTotal.toFixed(2)}</td>
+        <td class="mtd-count">${entries.reduce((s,[,d])=>s+d.count,0)}笔</td>
+        <td></td>
+      </tr>`;
+
+      // Show advance balance delta
+      if (advanceIn > 0 || advanceOut > 0) {
+        html += `<tr style="font-size:14px;color:var(--gray-500);background:var(--gray-50)">
+          <td colspan="4" style="padding:6px 14px">
+            🏦 备用金：本月流入 ¥${advanceIn.toFixed(2)} &nbsp;|&nbsp; 本月抵扣 ¥${advanceOut.toFixed(2)}
+          </td>
+        </tr>`;
+      }
+
+      html += `</tbody></table>`;
+    }
+  }
+
+  document.getElementById('mtdSummary').innerHTML = html;
+}
+
+function toggleMtd() {
+  mtdCollapsed = !mtdCollapsed;
+  renderMtd();
+}
+
+function navMtdMonth(delta) {
+  mtdMonth += delta;
+  if (mtdMonth < 0) { mtdMonth = 11; mtdYear--; }
+  if (mtdMonth > 11) { mtdMonth = 0; mtdYear++; }
+  renderMtd();
+}
+
+var VIEWING_PHOTOS = [];
+
+function renderPhotoArchive() {
+  const container = document.getElementById('photoArchive');
+  if (!container) return;
+  VIEWING_PHOTOS = JSON.parse(localStorage.getItem('driver_handwritten') || '[]');
+  if (VIEWING_PHOTOS.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  VIEWING_PHOTOS.sort((a, b) => b.date.localeCompare(a.date));
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="photo-archive-title" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'grid':'none'">
+      📷 手写记录存档 <span class="archive-count">${VIEWING_PHOTOS.length} 张</span>
+    </div>
+    <div class="photo-grid" style="display:grid">
+      ${VIEWING_PHOTOS.map((p, i) => `
+        <div class="photo-grid-item" onclick="viewArchivePhoto(${i})">
+          <img src="${p.photo}" alt="" loading="lazy">
+          <div class="photo-date">${p.date}</div>
+          <div class="photo-del" onclick="event.stopPropagation();deleteArchivePhoto(${i})">✕</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function viewArchivePhoto(idx) {
+  const p = VIEWING_PHOTOS[idx];
+  if (!p) return;
+  const div = document.createElement('div');
+  div.className = 'archive-viewer';
+  div.innerHTML = `
+    <button class="viewer-close" onclick="this.parentElement.remove()">✕</button>
+    <img src="${p.photo}" alt="">
+    <div class="viewer-info">📅 ${p.date}${p.note ? ' — ' + p.note : ''}</div>
+  `;
+  div.onclick = function(e) { if (e.target === div) div.remove(); };
+  document.body.appendChild(div);
+}
+
+function deleteArchivePhoto(idx) {
+  if (!confirm('删除这张手写记录？')) return;
+  VIEWING_PHOTOS.splice(idx, 1);
+  localStorage.setItem('driver_handwritten', JSON.stringify(VIEWING_PHOTOS));
+  renderPhotoArchive();
+}
+
+
+function renderExpenseCard(e) {
+  const typeEmoji = {
+    '加油/充电': '⛽',
+    '过路费': '🛣️',
+    '停车费': '🅿️',
+    '维修保养': '🔧',
+    '违章罚款': '⚠️',
+    '洗车': '🧽',
+    '差旅住宿费': '🏨',
+    '其他': '📌'
+  };
+  const emoji = typeEmoji[e.type] || '📌';
+
+  return `
+    <div class="expense-card" onclick="showDetail('${e.id}')">
+      <div class="card-header">
+        <span class="expense-type">${emoji} ${e.type}</span>
+        <span class="status-badge ${e.status}">${{pending:'待审核',approved:'已通过',rejected:'已拒绝'}[e.status]}</span>
+      </div>
+      <div class="card-meta">
+        <span>📅 ${e.date}</span>
+        <span class="expense-amount">${e.amount.toFixed(2)}</span>
+      </div>
+      ${e.description ? `<div class="card-desc">${e.description}</div>` : ''}
+      ${e.photo ? `<img class="card-photo" src="${e.photo}" alt="票据" loading="lazy">` : ''}
+      ${e.status !== 'pending' && e.reviewNote ? `<div class="review-note ${e.status} show">${e.reviewNote}</div>` : ''}
+      ${currentRole === 'admin' && e.status === 'pending' ? `
+        <div class="review-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-danger btn-sm" onclick="quickReview('${e.id}','rejected')">✕ 拒绝</button>
+          <button class="btn btn-success btn-sm" onclick="quickReview('${e.id}','approved')">✓ 通过</button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderReview() {
+  const content = document.getElementById('reviewContent');
+  if (currentRole !== 'admin') {
+    content.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔒</div>
+        <p>请切换到「管理」角色</p>
+      </div>`;
+    return;
+  }
+
+  const pending = loadData().filter(e => e.status === 'pending');
+  if (pending.length === 0) {
+    content.innerHTML = `
+      <div class="form-card">
+        <div class="section-title">✅ 审核中心</div>
+        <div class="empty-state" style="padding:24px">
+          <div class="empty-icon">🎉</div>
+          <p>没有待审核的报销</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="form-card">
+      <div class="section-title">✅ 审核中心 <span class="count">${pending.length} 条待审</span></div>
+      <div class="expense-list" style="margin-top:12px">
+        ${pending.map(e => `
+          <div class="expense-card" onclick="openReviewModal('${e.id}')">
+            <div class="card-header">
+              <span class="expense-type">${e.type}</span>
+              <span class="expense-amount">${e.amount.toFixed(2)}</span>
+            </div>
+            <div class="card-meta">
+              <span>📅 ${e.date}</span>
+            </div>
+            ${e.description ? `<div class="card-desc">${e.description}</div>` : ''}
+            ${e.photo ? `<img class="card-photo" src="${e.photo}" alt="票据" loading="lazy">` : ''}
+            <div class="review-actions" onclick="event.stopPropagation()">
+              <button class="btn btn-danger btn-sm" onclick="quickReview('${e.id}','rejected')">✕ 拒绝</button>
+              <button class="btn btn-success btn-sm" onclick="quickReview('${e.id}','approved')">✓ 通过</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+// ============ Expense CRUD ============
+function submitExpense(event) {
+  event.preventDefault();
+  const expense = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    date: document.getElementById('formDate').value,
+    type: document.getElementById('formType').value,
+    amount: parseFloat(document.getElementById('formAmount').value),
+    description: document.getElementById('formDesc').value.trim(),
+    photo: currentPhotoData,
+    status: 'pending',
+    reviewNote: '',
+    role: 'driver',
+    submittedBy: 'driver',
+    createdAt: new Date().toISOString()
+  };
+
+  const expenses = loadData();
+  expenses.push(expense);
+  saveData(expenses);
+
+  // Reset form
+  document.getElementById('expenseForm').reset();
+  document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
+  removePhotoDirect();
+  showToast('报销已提交 ✓');
+  switchTab('records');
+}
+
+function quickReview(id, status) {
+  const expenses = loadData();
+  const idx = expenses.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  expenses[idx].status = status;
+  expenses[idx].reviewNote = status === 'rejected' ? '管理员快速审核拒绝' : '管理员审核通过';
+  saveData(expenses);
+  showToast(status === 'approved' ? '已通过 ✓' : '已拒绝 ✕');
+  renderAll();
+}
+
+function openReviewModal(id) {
+  reviewingId = id;
+  const e = loadData().find(x => x.id === id);
+  if (!e) return;
+
+  document.getElementById('reviewModalTitle').textContent = `审核：${e.type} ¥${e.amount.toFixed(2)}`;
+  document.getElementById('reviewModalBody').innerHTML = `
+    <p style="color:var(--gray-500);font-size:15px">📅 ${e.date}</p>
+    ${e.description ? `<p style="margin-top:4px">${e.description}</p>` : ''}
+    ${e.photo ? `<img class="detail-photo" src="${e.photo}" alt="票据">` : '<p style="color:var(--gray-400);font-size:15px">无票据照片</p>'}
+  `;
+  document.getElementById('reviewNote').value = '';
+  document.getElementById('reviewModal').classList.add('show');
+}
+
+function confirmReview(status) {
+  const expenses = loadData();
+  const idx = expenses.findIndex(e => e.id === reviewingId);
+  if (idx === -1) return;
+  expenses[idx].status = status;
+  expenses[idx].reviewNote = document.getElementById('reviewNote').value.trim();
+  saveData(expenses);
+  closeReviewModal();
+  showToast(status === 'approved' ? '已通过 ✓' : '已拒绝 ✕');
+  renderAll();
+}
+
+function closeReviewModal() {
+  document.getElementById('reviewModal').classList.remove('show');
+  reviewingId = null;
+}
+
+function showDetail(id) {
+  const e = loadData().find(x => x.id === id);
+  if (!e) return;
+
+  const statusLabel = {pending:'待审核',approved:'已通过',rejected:'已拒绝'}[e.status];
+  document.getElementById('detailModalContent').innerHTML = `
+    <h3>${e.type} — ¥${e.amount.toFixed(2)}</h3>
+    <p style="color:var(--gray-500);font-size:15px;margin-top:4px">📅 ${e.date} &nbsp; <span class="status-badge ${e.status}">${statusLabel}</span></p>
+    ${e.description ? `<p style="margin-top:8px;color:var(--gray-700)">${e.description}</p>` : ''}
+    ${e.photo ? `<img class="detail-photo" src="${e.photo}" alt="票据">` : ''}
+    ${e.reviewNote ? `<div class="review-note ${e.status} show" style="margin-top:10px">📝 ${e.reviewNote}</div>` : ''}
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">🗑 删除</button>
+      <button class="btn btn-outline btn-sm" onclick="closeDetail()">关闭</button>
+    </div>
+  `;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeDetail() {
+  document.getElementById('detailModal').classList.remove('show');
+}
+
+function deleteExpense(id) {
+  if (!confirm('确定要删除这条报销记录吗？此操作不可撤销。')) return;
+  const expenses = loadData().filter(e => e.id !== id);
+  saveData(expenses);
+  // Unlink from trip
+  const trips = loadTrips();
+  const linked = trips.find(t => t.linkedExpenseId === id);
+  if (linked) {
+    linked.linkedExpenseId = null;
+    saveTrips(trips);
+  }
+  closeDetail();
+  showToast('已删除');
+  renderAll();
+}
+
+// Close modals on overlay click
+document.getElementById('detailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDetail();
+});
+document.getElementById('reviewModal').addEventListener('click', function(e) {
+  if (e.target === this) closeReviewModal();
+});
+
+// ============ Photo ============
+function handlePhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    // Compress large images
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxW = 800;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      currentPhotoData = canvas.toDataURL('image/jpeg', 0.7);
+
+      const preview = document.getElementById('photoPreview');
+      preview.src = currentPhotoData;
+      preview.classList.add('show');
+      document.getElementById('photoRemove').classList.add('show');
+      document.getElementById('photoUpload').classList.add('has-photo');
+      document.getElementById('photoUpload').querySelector('div').style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(e) {
+  if (e) e.stopPropagation();
+  removePhotoDirect();
+}
+
+function removePhotoDirect() {
+  currentPhotoData = null;
+  document.getElementById('photoInput').value = '';
+  document.getElementById('photoPreview').classList.remove('show');
+  document.getElementById('photoRemove').classList.remove('show');
+  document.getElementById('photoUpload').classList.remove('has-photo');
+  document.getElementById('photoUpload').querySelector('div').style.display = '';
+}
+
+// ============ Import Photo ============
+function handleImportPhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxW = 800;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      importPhotoData = canvas.toDataURL('image/jpeg', 0.7);
+
+      const preview = document.getElementById('importPhotoPreview');
+      preview.src = importPhotoData;
+      preview.classList.add('show');
+      document.getElementById('importPhotoRemove').classList.add('show');
+      document.getElementById('importPhotoUpload').classList.add('has-photo');
+      document.getElementById('importPhotoUpload').querySelector('div').style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImportPhoto(e) {
+  if (e) e.stopPropagation();
+  importPhotoData = null;
+  document.getElementById('importPhotoInput').value = '';
+  document.getElementById('importPhotoPreview').classList.remove('show');
+  document.getElementById('importPhotoRemove').classList.remove('show');
+  document.getElementById('importPhotoUpload').classList.remove('has-photo');
+  document.getElementById('importPhotoUpload').querySelector('div').style.display = '';
+}
+
+// ============ Driver Photo Import ============
+const DRIVER_PHOTO_KEY = 'driver_handwritten';
+
+function openDriverPhotoModal() {
+  document.getElementById('driverPhotoDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('driverPhotoNote').value = '';
+  driverPhotoData = null;
+  document.getElementById('driverPhotoInput').value = '';
+  document.getElementById('driverPhotoPreviewImg').classList.remove('show');
+  document.getElementById('driverPhotoRemoveBtn').classList.remove('show');
+  document.getElementById('driverPhotoUploadArea').classList.remove('has-photo');
+  document.getElementById('driverPhotoUploadArea').querySelector('div').style.display = '';
+  document.getElementById('driverPhotoModal').classList.add('show');
+}
+
+function closeDriverPhotoModal() {
+  document.getElementById('driverPhotoModal').classList.remove('show');
+}
+
+function handleDriverPhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxW = 1200;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      driverPhotoData = canvas.toDataURL('image/jpeg', 0.75);
+
+      const preview = document.getElementById('driverPhotoPreviewImg');
+      preview.src = driverPhotoData;
+      preview.classList.add('show');
+      document.getElementById('driverPhotoRemoveBtn').classList.add('show');
+      document.getElementById('driverPhotoUploadArea').classList.add('has-photo');
+      document.getElementById('driverPhotoUploadArea').querySelector('div').style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeDriverPhoto(e) {
+  if (e) e.stopPropagation();
+  driverPhotoData = null;
+  document.getElementById('driverPhotoInput').value = '';
+  document.getElementById('driverPhotoPreviewImg').classList.remove('show');
+  document.getElementById('driverPhotoRemoveBtn').classList.remove('show');
+  document.getElementById('driverPhotoUploadArea').classList.remove('has-photo');
+  document.getElementById('driverPhotoUploadArea').querySelector('div').style.display = '';
+}
+
+function saveDriverPhoto() {
+  if (!driverPhotoData) { showToast('请先拍照或选择照片'); return; }
+
+  const records = JSON.parse(localStorage.getItem(DRIVER_PHOTO_KEY) || '[]');
+  records.push({
+    id: 'dph_' + Date.now().toString(36),
+    date: document.getElementById('driverPhotoDate').value,
+    photo: driverPhotoData,
+    note: document.getElementById('driverPhotoNote').value.trim(),
+    createdAt: new Date().toISOString()
+  });
+  localStorage.setItem(DRIVER_PHOTO_KEY, JSON.stringify(records));
+  debouncePushToServer();
+
+  closeDriverPhotoModal();
+  showToast('手写记录已保存 ✓');
+  renderPhotoArchive();
+}
+
+document.getElementById('driverPhotoModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDriverPhotoModal();
+});
+
+// ============ Export ============
+function getExportData() {
+  const expenses = loadData();
+  return expenses.map(e => ({
+    '日期': e.date,
+    '类型': e.type,
+    '金额': e.amount,
+    '备注': e.description || '',
+    '状态': {pending:'待审核',approved:'已通过',rejected:'已拒绝'}[e.status],
+    '审核备注': e.reviewNote || '',
+    '备用金抵扣': e.advanceDeducted ? '是' : '',
+    '提交时间': new Date(e.createdAt).toLocaleString('zh-CN')
+  }));
+}
+
+function exportCSV() {
+  const data = getExportData();
+  if (data.length === 0) { showToast('没有数据可导出'); return; }
+  const headers = Object.keys(data[0]);
+  const csv = [
+    '\uFEFF' + headers.join(','),
+    ...data.map(row => headers.map(h => `"${(row[h]||'').toString().replace(/"/g,'""')}"`).join(','))
+  ].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  downloadBlob(blob, `司机报销_${new Date().toISOString().split('T')[0]}.csv`);
+  showToast('CSV 已导出 ✓');
+}
+
+function exportExcel() {
+  const data = getExportData();
+  if (data.length === 0) { showToast('没有数据可导出'); return; }
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 20 },
+    { wch: 8 }, { wch: 20 }, { wch: 20 }
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '报销明细');
+  XLSX.writeFile(wb, `司机报销_${new Date().toISOString().split('T')[0]}.xlsx`);
+  showToast('Excel 已导出 ✓');
+}
+
+// ============ Backup & Restore ============
+function backupAll() {
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    expenses: JSON.parse(localStorage.getItem('driver_expenses') || '[]'),
+    trips: JSON.parse(localStorage.getItem('driver_trips') || '[]'),
+    handwritten: JSON.parse(localStorage.getItem('driver_handwritten') || '[]')
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const filename = `司机工作台_备份_${new Date().toISOString().split('T')[0]}.json`;
+  const file = new File([blob], filename, { type: 'application/json' });
+
+  // Try Web Share API
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: '司机工作台数据备份', text: '点击用司机工作台打开恢复数据' }).catch(function(){});
+  } else {
+    // Fallback: download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  showToast('数据已备份 ✓');
+}
+
+function restoreAll() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function() {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const backup = JSON.parse(e.target.result);
+        if (!backup.expenses && !backup.trips) {
+          showToast('备份文件格式错误');
+          return;
+        }
+        const curExp = JSON.parse(localStorage.getItem('driver_expenses') || '[]');
+        const curTrips = JSON.parse(localStorage.getItem('driver_trips') || '[]');
+        const curHw = JSON.parse(localStorage.getItem('driver_handwritten') || '[]');
+        const msg = [
+          backup.expenses ? `报销 ${backup.expenses.length} 条 (现有 ${curExp.length})` : '',
+          backup.trips ? `行程 ${backup.trips.length} 条 (现有 ${curTrips.length})` : '',
+          backup.handwritten ? `手写 ${backup.handwritten.length} 张 (现有 ${curHw.length})` : ''
+        ].filter(Boolean).join('，');
+
+        if (!confirm(`即将恢复备份数据：\n${msg}\n\n现有数据将被覆盖，确认？`)) return;
+
+        if (backup.expenses) localStorage.setItem('driver_expenses', JSON.stringify(backup.expenses));
+        if (backup.trips) localStorage.setItem('driver_trips', JSON.stringify(backup.trips));
+        if (backup.handwritten) localStorage.setItem('driver_handwritten', JSON.stringify(backup.handwritten));
+
+        showToast('数据已恢复 ✓');
+        renderAll();
+      } catch (err) {
+        showToast('备份文件解析失败');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============ Import ============
+function openImportModal() {
+  document.getElementById('importJson').value = '';
+  importPhotoData = null;
+  document.getElementById('importPhotoInput').value = '';
+  document.getElementById('importPhotoPreview').classList.remove('show');
+  document.getElementById('importPhotoRemove').classList.remove('show');
+  document.getElementById('importPhotoUpload').classList.remove('has-photo');
+  document.getElementById('importPhotoUpload').querySelector('div').style.display = '';
+  document.getElementById('importModal').classList.add('show');
+}
+
+function closeImportModal() {
+  document.getElementById('importModal').classList.remove('show');
+}
+
+function confirmImport() {
+  const text = document.getElementById('importJson').value.trim();
+  if (!text) { showToast('请粘贴 JSON 数据'); return; }
+
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (err) {
+    showToast('JSON 格式错误：' + err.message);
+    return;
+  }
+
+  if (!Array.isArray(data)) {
+    showToast('数据格式错误：应为数组');
+    return;
+  }
+
+  const expenses = loadData();
+  const trips = loadTrips();
+
+  // Build existing key set for dedup
+  const existingKeys = new Set(
+    expenses.map(e => `${e.date}|${e.type}|${Math.round(e.amount*100)/100}|${e.description||''}`)
+  );
+
+  let importedExpenses = 0;
+  let importedTrips = 0;
+
+  data.forEach(item => {
+    if (!item.date || !item.type || !item.amount) return;
+
+    // Check if it's a trip (has destination field)
+    if (item.destination && item.purpose) {
+      trips.push({
+        id: 'trip_imp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + importedTrips,
+        date: item.date,
+        destination: item.destination,
+        purpose: item.purpose,
+        estimatedDistance: parseFloat(item.estimatedDistance) || 0,
+        estimatedCost: parseFloat(item.estimatedCost) || 0,
+        notes: item.notes || '',
+        status: item.status || 'planned',
+        linkedExpenseId: null,
+        createdAt: item.createdAt || new Date().toISOString()
+      });
+      importedTrips++;
+    } else {
+      // Import as expense record
+      const exp = {
+        id: 'imp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + importedExpenses,
+        date: item.date,
+        type: item.type,
+        amount: parseFloat(item.amount),
+        description: item.description || '',
+        photo: item.photo || null,
+        status: item.status || 'approved',
+        reviewNote: item.reviewNote || '历史数据导入',
+        role: 'driver',
+        submittedBy: 'driver',
+        createdAt: item.createdAt || new Date(item.date + 'T12:00:00').toISOString(),
+        linkedTripId: item.linkedTripId || null,
+        advanceDeducted: item.advanceDeducted !== undefined ? item.advanceDeducted : (item.type !== '备用金')
+      };
+
+      // If it's an advance, set received info
+      if (item.type === '备用金') {
+        exp.advanceReceived = item.advanceReceived !== undefined ? item.advanceReceived : true;
+        exp.advanceReceivedDate = item.advanceReceivedDate || item.date;
+        exp.advanceReceivedMethod = item.advanceReceivedMethod || '微信转账';
+        exp.advanceReceivedNote = item.advanceReceivedNote || '';
+        exp.advanceReceivedAmount = parseFloat(item.advanceReceivedAmount) || exp.amount;
+      }
+
+      // Skip duplicates
+      const expKey = `${exp.date}|${exp.type}|${Math.round(exp.amount*100)/100}|${exp.description||''}`;
+      if (existingKeys.has(expKey)) return;
+      existingKeys.add(expKey);
+
+      expenses.push(exp);
+      importedExpenses++;
+    }
+  });
+
+  saveData(expenses);
+  saveTrips(trips);
+
+  // Attach import photo to first imported expense if available
+  if (importPhotoData && importedExpenses > 0) {
+    // Find the first just-imported expense and attach photo
+    const firstImported = expenses.find(e => e.id && e.id.startsWith('imp_'));
+    if (firstImported) firstImported.photo = importPhotoData;
+    saveData(expenses);
+    importPhotoData = null;
+  }
+
+  closeImportModal();
+  showToast(`导入完成：报销 ${importedExpenses} 条，行程 ${importedTrips} 条`);
+  renderAll();
+}
+
+function dedupExpenses() {
+  const expenses = loadData();
+  const seen = new Set();
+  const unique = expenses.filter(e => {
+    const key = `${e.date}|${e.type}|${Math.round(e.amount*100)/100}|${e.description||''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const removed = expenses.length - unique.length;
+  if (removed === 0) {
+    showToast('没有重复数据');
+    return;
+  }
+  if (!confirm(`发现 ${removed} 条重复记录，确认删除？`)) return;
+  saveData(unique);
+  showToast(`已删除 ${removed} 条重复记录 ✓`);
+  renderAll();
+}
+
+document.getElementById('importModal').addEventListener('click', function(e) {
+  if (e.target === this) closeImportModal();
+});
+
+// ============ Trip Plans & Calendar ============
+const TRIP_STORAGE_KEY = 'driver_trips';
+let calYear, calMonth, selectedDate, tripViewMode = 'day';
+
+function loadTrips() {
+  try { return JSON.parse(localStorage.getItem(TRIP_STORAGE_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveTrips(data) { localStorage.setItem(TRIP_STORAGE_KEY, JSON.stringify(data)); debouncePushToServer(); }
+
+function renderPlan() {
+  const now = new Date();
+  if (!calYear) { calYear = now.getFullYear(); calMonth = now.getMonth(); }
+  if (!selectedDate) { selectedDate = formatDate(now); }
+
+  // Render dynamic toggles based on role
+  const toggles = document.getElementById('tripToggles');
+  let toggleHTML = `
+    <button id="tripToggleDay" class="${tripViewMode==='day'?'active':''}" onclick="switchTripView('day')">📅 当日计划</button>
+    <button id="tripToggleAll" class="${tripViewMode==='all'?'active':''}" onclick="switchTripView('all')">📋 全部计划</button>
+    <button id="tripToggleAdd" class="${tripViewMode==='add'?'active':''}" onclick="switchTripView('add')">➕ 新增计划</button>
+  `;
+  if (currentRole === 'admin') {
+    toggleHTML += `<button id="tripToggleDispatch" class="${tripViewMode==='dispatch'?'active admin-dispatch':''}" onclick="switchTripView('dispatch')">📢 派单</button>`;
+  }
+  toggles.innerHTML = toggleHTML;
+
+  renderCalendar();
+  renderTripContent();
+}
+
+function formatDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function renderCalendar() {
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const weekdays = ['日','一','二','三','四','五','六'];
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay = new Date(calYear, calMonth + 1, 0);
+  const startDow = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+  const prevLast = new Date(calYear, calMonth, 0).getDate();
+  const today = formatDate(new Date());
+
+  // Gather all dates with data
+  const expenses = loadData();
+  const trips = loadTrips();
+  const expenseDates = new Set(expenses.map(e => e.date));
+  const tripDates = new Set(trips.map(t => t.date));
+
+  let html = `<div class="calendar-header">
+    <button onclick="changeMonth(-1)">◀</button>
+    <span class="month-label">${calYear}年 ${months[calMonth]}</span>
+    <button onclick="changeMonth(1)">▶</button>
+  </div>
+  <div class="calendar-weekdays">${weekdays.map(w => `<span>${w}</span>`).join('')}</div>
+  <div class="calendar-grid">`;
+
+  // Prev month fill
+  for (let i = startDow - 1; i >= 0; i--) {
+    const d = prevLast - i;
+    const ds = formatDate(new Date(calYear, calMonth - 1, d));
+    html += `<div class="calendar-day other-month">${d}</div>`;
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = formatDate(new Date(calYear, calMonth, d));
+    let cls = 'calendar-day';
+    if (ds === today) cls += ' today';
+    if (ds === selectedDate) cls += ' selected';
+    let dots = '';
+    if (tripDates.has(ds)) dots += '<span class="day-dot trip"></span>';
+    if (expenseDates.has(ds)) dots += '<span class="day-dot expense"></span>';
+    html += `<div class="${cls}" onclick="selectDate('${ds}')">${d}${dots}</div>`;
+  }
+
+  // Next month fill
+  const remaining = 42 - startDow - daysInMonth; // 6 rows * 7
+  for (let d = 1; d <= remaining; d++) {
+    html += `<div class="calendar-day other-month">${d}</div>`;
+  }
+  html += '</div>';
+  document.getElementById('calendarCard').innerHTML = html;
+}
+
+function changeMonth(delta) {
+  calMonth += delta;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+}
+
+function selectDate(ds) {
+  selectedDate = ds;
+  tripViewMode = 'day';
+  renderPlan();
+}
+
+function switchTripView(mode) {
+  tripViewMode = mode;
+  renderPlan();
+}
+
+function renderTripContent() {
+  if (tripViewMode === 'add') {
+    renderAddTripForm();
+  } else if (tripViewMode === 'dispatch') {
+    renderAddTripForm(true); // admin dispatch mode
+  } else if (tripViewMode === 'all') {
+    renderAllTrips();
+  } else {
+    renderDayTrips();
+  }
+}
+
+function renderDayTrips() {
+  const trips = loadTrips().filter(t => t.date === selectedDate);
+  const expenses = loadData().filter(e => e.date === selectedDate);
+  const container = document.getElementById('tripContentView');
+
+  if (trips.length === 0 && expenses.length === 0) {
+    container.innerHTML = `
+      <div class="selected-date-label">
+        📅 日期：<strong>${selectedDate}</strong>
+      </div>
+      <div class="empty-state" style="padding:24px">
+        <div class="empty-icon">📭</div>
+        <p>这天没有外出计划或报销记录</p>
+        <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="switchTripView('add')">+ 添加外出计划</button>
+      </div>`;
+    return;
+  }
+
+  let html = `<div class="selected-date-label">📅 日期：<strong>${selectedDate}</strong></div>`;
+
+  // Trips
+  if (trips.length > 0) {
+    html += `<div class="section-title">🚗 外出计划</div>`;
+    html += trips.map(t => renderTripCard(t)).join('');
+  }
+
+  // Expenses
+  if (expenses.length > 0) {
+    html += `<div class="section-title" style="margin-top:16px">💰 报销记录</div>`;
+    html += expenses.map(e => renderExpenseCard(e)).join('');
+  }
+
+  container.innerHTML = html;
+}
+
+function renderAllTrips() {
+  const trips = loadTrips();
+  const container = document.getElementById('tripContentView');
+
+  if (trips.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding:24px">
+        <div class="empty-icon">🗺️</div>
+        <p>还没有外出计划</p>
+        <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="switchTripView('add')">+ 添加第一个计划</button>
+      </div>`;
+    return;
+  }
+
+  // Sort: upcoming first (planned), then past
+  const now = formatDate(new Date());
+  const upcoming = trips.filter(t => t.status === 'planned' && t.date >= now).sort((a,b) => a.date.localeCompare(b.date));
+  const past = trips.filter(t => t.status !== 'planned' || t.date < now).sort((a,b) => b.date.localeCompare(a.date));
+
+  let html = '';
+  if (upcoming.length > 0) {
+    html += `<div class="section-title">📌 即将出发</div>`;
+    html += upcoming.map(t => renderTripCard(t)).join('');
+  }
+  if (past.length > 0) {
+    html += `<div class="section-title" style="margin-top:16px">📋 历史计划</div>`;
+    html += past.map(t => renderTripCard(t)).join('');
+  }
+
+  container.innerHTML = html;
+}
+
+function renderTripCard(t) {
+  const statusLabels = {planned:'计划中',completed:'已完成',cancelled:'已取消'};
+  const emoji = {planned:'📌',completed:'✅',cancelled:'❌'};
+  const isDispatched = t.createdBy === 'admin';
+  const cardCls = t.status + (isDispatched ? ' dispatched' : '');
+  const dispatchTag = isDispatched ? '<span class="dispatch-tag">📢 管理员派单</span>' : '';
+
+  let actionHtml = '';
+  if (t.status === 'planned') {
+    if (isDispatched && currentRole === 'driver') {
+      // Driver can accept/decline dispatched trip
+      actionHtml = `
+        <div class="driver-action-bar" onclick="event.stopPropagation()">
+          <button class="btn btn-outline btn-sm" onclick="cancelTrip('${t.id}')">✕ 无法出车</button>
+          <button class="btn btn-success btn-sm" onclick="acceptAndCompleteTrip('${t.id}')">✓ 确认出车</button>
+        </div>`;
+    } else {
+      // Normal trip or admin viewing
+      actionHtml = `
+        <div class="review-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-outline btn-sm" onclick="cancelTrip('${t.id}')">取消</button>
+          <button class="btn btn-success btn-sm" onclick="completeTripAndExpense('${t.id}')">✓ 完成并报销</button>
+        </div>`;
+    }
+  }
+
+  return `
+    <div class="trip-card ${cardCls}" onclick="showTripDetail('${t.id}')">
+      <div class="trip-header">
+        <div>
+          <span class="trip-dest">📍 ${t.destination}</span>
+          <div class="trip-purpose">${t.purpose}</div>
+          ${dispatchTag}
+        </div>
+        <span class="trip-badge ${t.status}">${emoji[t.status]} ${statusLabels[t.status]}</span>
+      </div>
+      <div class="trip-meta">
+        <span>📅 ${t.date}</span>
+        ${t.estimatedDistance ? `<span>🛣️ ${t.estimatedDistance}km</span>` : ''}
+        ${t.estimatedCost ? `<span>💰 预估 ¥${t.estimatedCost}</span>` : ''}
+      </div>
+      ${t.notes ? `<div class="card-desc" style="margin-top:4px">${t.notes}</div>` : ''}
+      ${actionHtml}
+    </div>`;
+}
+
+function renderAddTripForm(isDispatch) {
+  const container = document.getElementById('tripContentView');
+  const title = isDispatch ? '📢 向司机派单' : '🗺️ 新增外出计划';
+  const hint = isDispatch ? '<p style="color:#ea580c;font-size:14px;margin-bottom:12px">⚠️ 此任务将推送给司机，司机端可见</p>' : '';
+  const submitFn = isDispatch ? 'submitTripPlan(event, true)' : 'submitTripPlan(event)';
+
+  container.innerHTML = `
+    <div class="form-card">
+      <div class="section-title">${title}</div>
+      ${hint}
+      <form onsubmit="${submitFn}">`
+
+  // ... rest of form stays the same
+  // but I need to re-output the rest of the form
+
+  container.innerHTML = `
+    <div class="form-card">
+      <div class="section-title">${title}</div>
+      ${hint}
+      <form onsubmit="${submitFn}">
+        <div class="form-group">
+          <label>出发日期 *</label>
+          <input type="date" id="tripDate" value="${selectedDate}" required>
+        </div>
+        <div class="form-group">
+          <label>目的地 *</label>
+          <input type="text" id="tripDest" placeholder="例如：浦东机场、杭州客户公司" required>
+        </div>
+        <div class="form-group">
+          <label>事由 *</label>
+          <input type="text" id="tripPurpose" placeholder="例如：接客户、拜访供应商" required>
+        </div>
+        <div class="form-group">
+          <label>预估里程（公里）</label>
+          <input type="number" id="tripDist" step="0.1" min="0" placeholder="可选">
+        </div>
+        <div class="form-group">
+          <label>预估费用（元）</label>
+          <input type="number" id="tripCost" step="0.01" min="0" placeholder="可选">
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea id="tripNotes" placeholder="可选，补充说明..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">✓ ${isDispatch ? '派单给司机' : '创建外出计划'}</button>
+      </form>
+    </div>`;
+}
+
+function submitTripPlan(event, isDispatch) {
+  event.preventDefault();
+  const trip = {
+    id: 'trip_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    date: document.getElementById('tripDate').value,
+    destination: document.getElementById('tripDest').value.trim(),
+    purpose: document.getElementById('tripPurpose').value.trim(),
+    estimatedDistance: parseFloat(document.getElementById('tripDist').value) || 0,
+    estimatedCost: parseFloat(document.getElementById('tripCost').value) || 0,
+    notes: document.getElementById('tripNotes').value.trim(),
+    status: 'planned',
+    linkedExpenseId: null,
+    createdAt: new Date().toISOString(),
+    createdBy: isDispatch ? 'admin' : 'driver'
+  };
+
+  const trips = loadTrips();
+  trips.push(trip);
+  saveTrips(trips);
+
+  selectedDate = trip.date;
+  tripViewMode = 'day';
+  showToast(isDispatch ? '已派单给司机 📢' : '外出计划已创建 ✓');
+  renderPlan();
+}
+
+function showTripDetail(id) {
+  const t = loadTrips().find(x => x.id === id);
+  if (!t) return;
+
+  const statusLabels = {planned:'计划中',completed:'已完成',cancelled:'已取消'};
+  let linkedExpenseHtml = '';
+  if (t.linkedExpenseId) {
+    const exp = loadData().find(e => e.id === t.linkedExpenseId);
+    if (exp) {
+      linkedExpenseHtml = `<div style="margin-top:12px;padding:10px;background:var(--gray-50);border-radius:8px">
+        <span style="font-size:14px;color:var(--gray-400)">关联报销</span>
+        <div style="font-weight:600">${exp.type} — ¥${exp.amount.toFixed(2)} <span class="status-badge ${exp.status}">${{pending:'待审核',approved:'已通过',rejected:'已拒绝'}[exp.status]}</span></div>
+      </div>`;
+    }
+  }
+
+  document.getElementById('tripDetailContent').innerHTML = `
+    <h3>📍 ${t.destination}</h3>
+    <p style="color:var(--gray-500);font-size:15px;margin-top:4px">📅 ${t.date} &nbsp; <span class="trip-badge ${t.status}">${statusLabels[t.status]}</span></p>
+    <p style="margin-top:8px;font-weight:600">${t.purpose}</p>
+    ${t.estimatedDistance ? `<p style="margin-top:4px;color:var(--gray-600)">🛣️ 预估 ${t.estimatedDistance} 公里</p>` : ''}
+    ${t.estimatedCost ? `<p style="margin-top:4px;color:var(--gray-600)">💰 预估 ¥${t.estimatedCost}</p>` : ''}
+    ${t.notes ? `<p style="margin-top:8px;color:var(--gray-600)">${t.notes}</p>` : ''}
+    ${linkedExpenseHtml}
+    <div class="modal-actions">
+      ${t.status === 'planned' ? `
+        <button class="btn btn-outline btn-sm" onclick="cancelTrip('${t.id}');closeTripDetail()">❌ 取消计划</button>
+        <button class="btn btn-success btn-sm" onclick="completeTripAndExpense('${t.id}');closeTripDetail()">✓ 完成并报销</button>
+      ` : ''}
+      <button class="btn btn-danger btn-sm" onclick="deleteTripPlan('${t.id}')">🗑 删除</button>
+      <button class="btn btn-outline btn-sm" onclick="closeTripDetail()">关闭</button>
+    </div>
+  `;
+  document.getElementById('tripDetailModal').classList.add('show');
+}
+
+function closeTripDetail() {
+  document.getElementById('tripDetailModal').classList.remove('show');
+}
+
+function deleteTripPlan(id) {
+  if (!confirm('确定删除这条外出计划吗？')) return;
+  const trips = loadTrips().filter(t => t.id !== id);
+  saveTrips(trips);
+  closeTripDetail();
+  showToast('已删除');
+  renderPlan();
+}
+
+function cancelTrip(id) {
+  if (!confirm('确定取消这个外出计划吗？')) return;
+  const trips = loadTrips();
+  const idx = trips.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  trips[idx].status = 'cancelled';
+  saveTrips(trips);
+  showToast('已取消');
+  renderPlan();
+}
+
+function acceptAndCompleteTrip(id) {
+  if (!confirm('确认接受这个出车任务？')) return;
+  const trips = loadTrips();
+  const idx = trips.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  trips[idx].status = 'completed';
+  saveTrips(trips);
+  showToast('已确认出车 ✓');
+  renderPlan();
+}
+
+function completeTripAndExpense(tripId) {
+  const trips = loadTrips();
+  const trip = trips.find(t => t.id === tripId);
+  if (!trip) return;
+
+  // Mark trip as completed
+  trip.status = 'completed';
+  saveTrips(trips);
+
+  // Pre-fill expense form and switch to add tab
+  document.getElementById('formDate').value = trip.date;
+  document.getElementById('formAmount').value = trip.estimatedCost || '';
+  document.getElementById('formDesc').value = `外出：${trip.destination} — ${trip.purpose}`;
+  // Store the trip ID to link later
+  window._linkingTripId = tripId;
+
+  showToast('计划已完成，请填写报销金额 ✓');
+  switchTab('add');
+
+  // Add a hint bar in the add form
+  const formCard = document.querySelector('#tabAdd .form-card');
+  if (formCard && !document.getElementById('tripLinkHint')) {
+    const hint = document.createElement('div');
+    hint.id = 'tripLinkHint';
+    hint.style.cssText = 'background:#ede9fe;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:15px;color:#5b21b6;';
+    hint.innerHTML = `🔗 关联外出计划：<strong>${trip.destination}</strong> — ${trip.purpose}`;
+    formCard.insertBefore(hint, formCard.querySelector('form'));
+  }
+}
+
+// Update submitExpense to handle linked trip
+const origSubmitExpense = submitExpense;
+submitExpense = function(event) {
+  event.preventDefault();
+  const useAdvance = document.getElementById('useAdvance').checked;
+  const expenseType = document.getElementById('formType').value;
+
+  // Validate advance deduction
+  if (useAdvance && expenseType !== '备用金') {
+    const expenses = loadData();
+    const advanceTotal = expenses.filter(e => e.type === '备用金' && e.status === 'approved' && e.advanceReceived).reduce((s, e) => s + (e.advanceReceivedAmount || e.amount), 0);
+    const deducted = expenses.filter(e => e.advanceDeducted).reduce((s, e) => s + e.amount, 0);
+    const balance = advanceTotal - deducted;
+    const amount = parseFloat(document.getElementById('formAmount').value);
+    if (amount > balance) {
+      showToast('备用金余额不足（余额 ¥' + balance.toFixed(2) + '）');
+      return;
+    }
+  }
+
+  const expense = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    date: document.getElementById('formDate').value,
+    type: expenseType,
+    amount: parseFloat(document.getElementById('formAmount').value),
+    description: document.getElementById('formDesc').value.trim(),
+    photo: currentPhotoData,
+    status: 'pending',
+    reviewNote: '',
+    role: 'driver',
+    submittedBy: 'driver',
+    createdAt: new Date().toISOString(),
+    linkedTripId: window._linkingTripId || null,
+    advanceDeducted: useAdvance && expenseType !== '备用金'
+  };
+
+  // Link the trip to this expense
+  if (window._linkingTripId) {
+    const trips = loadTrips();
+    const trip = trips.find(t => t.id === window._linkingTripId);
+    if (trip) {
+      trip.linkedExpenseId = expense.id;
+      saveTrips(trips);
+    }
+    window._linkingTripId = null;
+    // Remove hint
+    const hint = document.getElementById('tripLinkHint');
+    if (hint) hint.remove();
+  }
+
+  const expenses = loadData();
+  expenses.push(expense);
+  saveData(expenses);
+
+  document.getElementById('expenseForm').reset();
+  document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('useAdvance').checked = false;
+  document.getElementById('advanceCheckbox').style.display = 'none';
+  removePhotoDirect();
+  showToast('报销已提交 ✓');
+  switchTab('records');
+};
+
+// Update expense card to show linked trip
+const origRenderExpenseCard = renderExpenseCard;
+renderExpenseCard = function(e) {
+  const typeEmoji = {
+    '加油/充电': '⛽', '过路费': '🛣️', '停车费': '🅿️',
+    '维修保养': '🔧', '违章罚款': '⚠️', '洗车': '🧽',
+    '差旅住宿费': '🏨', '备用金': '🏦', '其他': '📌'
+  };
+  const emoji = typeEmoji[e.type] || '📌';
+  const isAdvance = e.type === '备用金';
+  let linkedTripHtml = '';
+  if (e.linkedTripId) {
+    const trip = loadTrips().find(t => t.id === e.linkedTripId);
+    if (trip) linkedTripHtml = `<span class="linked-trip">🔗 ${trip.destination}</span>`;
+  }
+  let advanceTagHtml = '';
+  let advanceReceiveHtml = '';
+  if (isAdvance && e.status === 'approved') {
+    if (e.advanceReceived) {
+      const methodLabels = {'微信转账':'💬 微信','现金':'💵 现金','银行转账':'🏦 银行','其他':'📌 其他'};
+      advanceTagHtml = `<span class="advance-tag received">✅ 已领用</span>`;
+      advanceReceiveHtml = `
+        <div class="advance-receive-info">
+          <span>${methodLabels[e.advanceReceivedMethod] || e.advanceReceivedMethod}</span>
+          <span>📅 ${e.advanceReceivedDate}</span>
+          <span>💰 ¥${(e.advanceReceivedAmount || e.amount).toFixed(2)}</span>
+          ${e.advanceReceivedNote ? `<span style="color:var(--gray-500)">${e.advanceReceivedNote}</span>` : ''}
+        </div>`;
+    } else {
+      advanceTagHtml = `<span class="advance-tag unreceived">⏳ 待领用</span>`;
+    }
+  }
+  if (e.advanceDeducted) {
+    advanceTagHtml = `<span class="advance-tag">💳 备用金抵扣</span>`;
+  }
+
+  return `
+    <div class="expense-card ${isAdvance ? 'advance-card' : ''}" onclick="showDetail('${e.id}')">
+      <div class="card-header">
+        <span class="expense-type">${emoji} ${e.type}</span>
+        <span class="status-badge ${e.status}">${{pending:'待审核',approved:'已通过',rejected:'已拒绝'}[e.status]}</span>
+      </div>
+      <div class="card-meta">
+        <span>📅 ${e.date}</span>
+        <span class="expense-amount">${e.amount.toFixed(2)}</span>
+      </div>
+      ${e.description ? `<div class="card-desc">${e.description}</div>` : ''}
+      ${e.photo ? `<img class="card-photo" src="${e.photo}" alt="票据" loading="lazy">` : ''}
+      ${linkedTripHtml}
+      ${advanceTagHtml}
+      ${advanceReceiveHtml}
+      ${isAdvance && e.status === 'approved' && !e.advanceReceived ? `
+        <div class="advance-receive-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-outline btn-sm" onclick="openReceiveModal('${e.id}')">💰 标记领用</button>
+        </div>
+      ` : ''}
+      ${e.status !== 'pending' && e.reviewNote ? `<div class="review-note ${e.status} show">${e.reviewNote}</div>` : ''}
+      ${currentRole === 'admin' && e.status === 'pending' ? `
+        <div class="review-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-danger btn-sm" onclick="quickReview('${e.id}','rejected')">✕ 拒绝</button>
+          <button class="btn btn-success btn-sm" onclick="quickReview('${e.id}','approved')">✓ 通过</button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+};
+
+// Update showDetail to show linked trip
+const origShowDetail = showDetail;
+showDetail = function(id) {
+  const e = loadData().find(x => x.id === id);
+  if (!e) return;
+
+  let linkedTripHtml = '';
+  if (e.linkedTripId) {
+    const trip = loadTrips().find(t => t.id === e.linkedTripId);
+    if (trip) {
+      linkedTripHtml = `
+        <div style="margin-top:8px;padding:10px;background:#ede9fe;border-radius:8px;">
+          <span style="font-size:14px;color:#5b21b6;">🔗 关联外出计划</span>
+          <div style="font-weight:600;color:var(--gray-800)">📍 ${trip.destination} — ${trip.purpose}</div>
+        </div>`;
+    }
+  }
+
+  const statusLabel = {pending:'待审核',approved:'已通过',rejected:'已拒绝'}[e.status];
+  document.getElementById('detailModalContent').innerHTML = `
+    <h3>${e.type} — ¥${e.amount.toFixed(2)}</h3>
+    <p style="color:var(--gray-500);font-size:15px;margin-top:4px">📅 ${e.date} &nbsp; <span class="status-badge ${e.status}">${statusLabel}</span></p>
+    ${e.description ? `<p style="margin-top:8px;color:var(--gray-700)">${e.description}</p>` : ''}
+    ${e.photo ? `<img class="detail-photo" src="${e.photo}" alt="票据">` : ''}
+    ${linkedTripHtml}
+    ${e.type === '备用金' && e.advanceReceived ? `
+      <div style="margin-top:8px;padding:10px;background:#f0fdf4;border-radius:8px;">
+        <span style="font-size:14px;color:#166534;">✅ 已领用</span>
+        <div style="font-weight:600;color:var(--gray-800);margin-top:2px">${({微信转账:'💬 微信转账',现金:'💵 现金',银行转账:'🏦 银行转账',其他:'📌 其他'})[e.advanceReceivedMethod] || e.advanceReceivedMethod} — ¥${(e.advanceReceivedAmount || e.amount).toFixed(2)}</div>
+        <div style="font-size:14px;color:var(--gray-500)">📅 ${e.advanceReceivedDate}</div>
+        ${e.advanceReceivedNote ? `<div style="font-size:14px;color:var(--gray-500)">${e.advanceReceivedNote}</div>` : ''}
+      </div>
+    ` : ''}
+    ${e.reviewNote ? `<div class="review-note ${e.status} show" style="margin-top:10px">📝 ${e.reviewNote}</div>` : ''}
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">🗑 删除</button>
+      <button class="btn btn-outline btn-sm" onclick="closeDetail()">关闭</button>
+    </div>
+  `;
+  document.getElementById('detailModal').classList.add('show');
+};
+
+// Close trip detail modal on overlay click
+document.getElementById('tripDetailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeTripDetail();
+});
+
+// ============ Advance Receive ============
+let receivingId = null;
+let selectedMethod = '微信转账';
+
+function selectMethod(method, el) {
+  selectedMethod = method;
+  document.querySelectorAll('#methodOptions .method-option').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function openReceiveModal(id) {
+  const e = loadData().find(x => x.id === id);
+  if (!e || e.type !== '备用金') return;
+  receivingId = id;
+  selectedMethod = '微信转账';
+  document.querySelectorAll('#methodOptions .method-option').forEach((o, i) => {
+    o.classList.toggle('active', i === 0);
+  });
+  document.getElementById('receiveDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('receiveAmount').value = e.amount;
+  document.getElementById('receiveNote').value = '';
+  document.getElementById('receiveModalBody').innerHTML = `
+    <p style="color:var(--gray-500);font-size:15px">备用金申请：<strong>¥${e.amount.toFixed(2)}</strong></p>
+    ${e.description ? `<p style="font-size:15px;margin-top:4px">用途：${e.description}</p>` : ''}
+  `;
+  document.getElementById('receiveModal').classList.add('show');
+}
+
+function closeReceiveModal() {
+  document.getElementById('receiveModal').classList.remove('show');
+  receivingId = null;
+}
+
+function confirmReceive() {
+  if (!receivingId) return;
+  const amount = parseFloat(document.getElementById('receiveAmount').value);
+  const date = document.getElementById('receiveDate').value;
+  if (!amount || amount <= 0) { showToast('请填写有效金额'); return; }
+  if (!date) { showToast('请选择领用日期'); return; }
+
+  const expenses = loadData();
+  const idx = expenses.findIndex(e => e.id === receivingId);
+  if (idx === -1) return;
+
+  expenses[idx].advanceReceived = true;
+  expenses[idx].advanceReceivedDate = date;
+  expenses[idx].advanceReceivedMethod = selectedMethod;
+  expenses[idx].advanceReceivedNote = document.getElementById('receiveNote').value.trim();
+  expenses[idx].advanceReceivedAmount = amount;
+  saveData(expenses);
+
+  closeReceiveModal();
+  showToast('备用金领用已记录 ✓');
+  renderAll();
+}
+
+document.getElementById('receiveModal').addEventListener('click', function(e) {
+  if (e.target === this) closeReceiveModal();
+});
+
+// ============ Toast ============
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ============ Start ============
+init();
+</script>
+</body>
+</html>
