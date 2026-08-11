@@ -1278,18 +1278,9 @@ body {
     <p style="color:var(--gray-500);font-size:15px;margin-bottom:12px">粘贴 JSON 数据，导入历史报销和备用金记录</p>
     <div class="form-group">
       <label>JSON 数据</label>
-      <textarea id="importJson" style="min-height:140px;font-family:monospace;font-size:14px" placeholder='粘贴 JSON 数组...'></textarea>
+      <textarea id="importJson" style="min-height:180px;font-family:monospace;font-size:14px" placeholder='粘贴 JSON 数组...'></textarea>
     </div>
-    <div class="form-group" style="margin-bottom:8px">
-      <label style="color:var(--gray-400);font-size:14px">📷 凭证照片（可选，不上传也能导入）</label>
-      <div class="photo-upload" id="importPhotoUpload" onclick="document.getElementById('importPhotoInput').click()" style="padding:12px;font-size:14px">
-        <div>📷 点击上传手写记录照片（可跳过）</div>
-        <img class="photo-preview" id="importPhotoPreview" alt="">
-        <span class="photo-remove" id="importPhotoRemove" onclick="removeImportPhoto(event)">✕ 删除照片</span>
-      </div>
-      <input type="file" id="importPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleImportPhoto(event)">
-    </div>
-    <p style="font-size:14px;color:var(--gray-400);margin-bottom:8px">💡 JSON 格式：<code>[{"date":"2026-07-03","type":"加油/充电","amount":320,"description":""}]</code>，导入后自动标记「已通过」</p>
+    <p style="font-size:14px;color:var(--gray-400);margin-bottom:8px">💡 格式：<code>[{"date":"2026-07-03","type":"加油/充电","amount":320}]</code>，导入后自动标记「已通过」</p>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeImportModal()">取消</button>
       <button class="btn btn-primary" onclick="confirmImport()">✓ 导入</button>
