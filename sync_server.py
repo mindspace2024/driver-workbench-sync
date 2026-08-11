@@ -10,8 +10,8 @@ import sys
 from urllib.parse import urlparse
 
 PORT = int(os.environ.get('PORT', 8080))
-# Use Render persistent directory to survive deploys
-DATA_DIR = os.environ.get('RENDER_DATA_DIR', os.path.join(os.path.dirname(__file__), 'data'))
+# Store data in persistent directory that survives Render deploys
+DATA_DIR = '/var/data'
 os.makedirs(DATA_DIR, exist_ok=True)
 DATA_FILE = os.path.join(DATA_DIR, 'shared-data.json')
 
