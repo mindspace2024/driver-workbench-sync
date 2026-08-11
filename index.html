@@ -1528,7 +1528,7 @@ function getFilteredExpenses() {
   // Sort by date desc, then createdAt desc
   expenses.sort((a, b) => {
     if (a.date !== b.date) return b.date.localeCompare(a.date);
-    return b.createdAt.localeCompare(a.createdAt);
+    return (b.createdAt || '').localeCompare(a.createdAt || '');
   });
   return expenses;
 }
