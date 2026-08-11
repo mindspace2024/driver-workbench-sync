@@ -1162,7 +1162,7 @@ body {
       </div>
       <!-- Advance deduction checkbox -->
       <div id="advanceCheckbox" style="display:none" class="advance-checkbox" onclick="document.getElementById('useAdvance').click()">
-        <input type="checkbox" id="useAdvance"> <span>从备用金余额抵扣（余额 <strong id="advanceBalText">¥0</strong>）</span>
+        <input type="checkbox" id="useAdvance"> <span>从备用金结余抵扣（结余 <strong id="advanceBalText">¥0</strong>）</span>
       </div>
       <!-- Trip link hint -->
       <div id="tripLinkHint"></div>
@@ -1558,11 +1558,11 @@ function updateStatsBar() {
   document.getElementById('statsBar').innerHTML = `
     <div class="stat-card total">
       <div class="stat-value">¥${total.toFixed(0)}</div>
-      <div class="stat-label">合计</div>
+      <div class="stat-label">使用合计</div>
     </div>
     <div class="stat-card advance">
       <div class="stat-value">¥${advanceBalance.toFixed(0)}</div>
-      <div class="stat-label">备用金余额</div>
+      <div class="stat-label">备用金结余</div>
     </div>
     <div class="stat-card pending">
       <div class="stat-value">${pending.length}</div>
