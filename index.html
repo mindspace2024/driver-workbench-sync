@@ -1274,12 +1274,21 @@ body {
 <div class="modal-overlay" id="importModal">
   <div class="modal">
     <h3>📥 导入历史数据</h3>
-    <p style="color:var(--gray-500);font-size:15px;margin-bottom:12px">粘贴 JSON 数据，导入历史报销和备用金记录</p>
+    <p style="color:var(--gray-500);font-size:15px;margin-bottom:12px">JSON 和照片填一个就能提交，同时填也行</p>
     <div class="form-group">
-      <label>JSON 数据</label>
-      <textarea id="importJson" style="min-height:180px;font-family:monospace;font-size:14px" placeholder='粘贴 JSON 数组...'></textarea>
+      <label>JSON 数据（可选）</label>
+      <textarea id="importJson" style="min-height:120px;font-family:monospace;font-size:14px" placeholder='粘贴 JSON 数组...'></textarea>
     </div>
-    <p style="font-size:14px;color:var(--gray-400);margin-bottom:8px">💡 格式：<code>[{"date":"2026-07-03","type":"加油/充电","amount":320}]</code>，导入后自动标记「已通过」</p>
+    <div class="form-group">
+      <label>📷 凭证照片（可选）</label>
+      <div class="photo-upload" id="importPhotoUpload" onclick="document.getElementById('importPhotoInput').click()" style="padding:12px;font-size:14px">
+        <div>📷 点击拍照或上传照片</div>
+        <img class="photo-preview" id="importPhotoPreview" alt="">
+        <span class="photo-remove" id="importPhotoRemove" onclick="removeImportPhoto(event)">✕ 删除照片</span>
+      </div>
+      <input type="file" id="importPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleImportPhoto(event)">
+    </div>
+    <p style="font-size:14px;color:var(--gray-400);margin-bottom:8px">💡 JSON 格式：<code>[{"date":"2026-07-03","type":"加油/充电","amount":320}]</code></p>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeImportModal()">取消</button>
       <button class="btn btn-primary" onclick="confirmImport()">✓ 导入</button>
@@ -2317,69 +2326,72 @@ function closeImportModal() {
 
 function confirmImport() {
   const text = document.getElementById('importJson').value.trim();
-  if (!text) { showToast('请粘贴 JSON 数据'); return; }
+  const hasJson = !!text;
+  const hasPhoto = !!importPhotoData;
 
+  if (!hasJson && !hasPhoto) {
+    showToast('请粘贴 JSON 数据或上传照片');
+    return;
+  }
+
+  // Photo-only: save as handwritten record
+  if (!hasJson && hasPhoto) {
+    const records = JSON.parse(localStorage.getItem('driver_handwritten') || '[]');
+    records.push({
+      id: 'dph_' + Date.now().toString(36),
+      date: new Date().toISOString().split('T')[0],
+      photo: importPhotoData,
+      note: '',
+      createdAt: new Date().toISOString()
+    });
+    localStorage.setItem('driver_handwritten', JSON.stringify(records));
+    importPhotoData = null;
+    closeImportModal();
+    showToast('照片已保存 ✓');
+    renderPhotoArchive();
+    return;
+  }
+
+  // JSON (with optional photo)
   let data;
-  try {
-    data = JSON.parse(text);
-  } catch (err) {
-    showToast('JSON 格式错误：' + err.message);
-    return;
-  }
+  try { data = JSON.parse(text); }
+  catch (err) { showToast('JSON 格式错误：' + err.message); return; }
 
-  if (!Array.isArray(data)) {
-    showToast('数据格式错误：应为数组');
-    return;
-  }
+  if (!Array.isArray(data)) { showToast('JSON 格式：应为数组'); return; }
 
   const expenses = loadData();
   const trips = loadTrips();
-
-  // Build existing key set for dedup
   const existingKeys = new Set(
     expenses.map(e => `${e.date}|${e.type}|${Math.round(e.amount*100)/100}|${e.description||''}`)
   );
 
-  let importedExpenses = 0;
-  let importedTrips = 0;
+  let importedExpenses = 0, importedTrips = 0;
 
   data.forEach(item => {
     if (!item.date || !item.type || !item.amount) return;
 
-    // Check if it's a trip (has destination field)
     if (item.destination && item.purpose) {
       trips.push({
-        id: 'trip_imp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + importedTrips,
-        date: item.date,
-        destination: item.destination,
-        purpose: item.purpose,
+        id: 'trip_imp_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+        date: item.date, destination: item.destination, purpose: item.purpose,
         estimatedDistance: parseFloat(item.estimatedDistance) || 0,
         estimatedCost: parseFloat(item.estimatedCost) || 0,
-        notes: item.notes || '',
-        status: item.status || 'planned',
-        linkedExpenseId: null,
-        createdAt: item.createdAt || new Date().toISOString()
+        notes: item.notes || '', status: item.status || 'planned',
+        linkedExpenseId: null, createdAt: item.createdAt || new Date().toISOString()
       });
       importedTrips++;
     } else {
-      // Import as expense record
       const exp = {
-        id: 'imp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + importedExpenses,
-        date: item.date,
-        type: item.type,
-        amount: parseFloat(item.amount),
-        description: item.description || '',
-        photo: item.photo || null,
-        status: item.status || 'approved',
-        reviewNote: item.reviewNote || '历史数据导入',
-        role: 'driver',
-        submittedBy: 'driver',
+        id: 'imp_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+        date: item.date, type: item.type, amount: parseFloat(item.amount),
+        description: item.description || '', photo: item.photo || null,
+        status: item.status || 'approved', reviewNote: item.reviewNote || '历史数据导入',
+        role: 'driver', submittedBy: 'driver',
         createdAt: item.createdAt || new Date(item.date + 'T12:00:00').toISOString(),
         linkedTripId: item.linkedTripId || null,
         advanceDeducted: item.advanceDeducted !== undefined ? item.advanceDeducted : (item.type !== '备用金')
       };
 
-      // If it's an advance, set received info
       if (item.type === '备用金') {
         exp.advanceReceived = item.advanceReceived !== undefined ? item.advanceReceived : true;
         exp.advanceReceivedDate = item.advanceReceivedDate || item.date;
@@ -2388,7 +2400,6 @@ function confirmImport() {
         exp.advanceReceivedAmount = parseFloat(item.advanceReceivedAmount) || exp.amount;
       }
 
-      // Skip duplicates
       const expKey = `${exp.date}|${exp.type}|${Math.round(exp.amount*100)/100}|${exp.description||''}`;
       if (existingKeys.has(expKey)) return;
       existingKeys.add(expKey);
@@ -2398,18 +2409,21 @@ function confirmImport() {
     }
   });
 
-  saveData(expenses);
-  saveTrips(trips);
-
-  // Attach import photo to first imported expense if available
-  if (importPhotoData && importedExpenses > 0) {
-    // Find the first just-imported expense and attach photo
-    const firstImported = expenses.find(e => e.id && e.id.startsWith('imp_'));
-    if (firstImported) firstImported.photo = importPhotoData;
-    saveData(expenses);
+  // Attach photo to first imported record
+  if (hasPhoto && importedExpenses > 0) {
+    const first = expenses.find(e => e.id && e.id.startsWith('imp_'));
+    if (first) first.photo = importPhotoData;
+    importPhotoData = null;
+  } else if (hasPhoto) {
+    // JSON imported nothing but photo exists? Save as handwritten
+    const records = JSON.parse(localStorage.getItem('driver_handwritten') || '[]');
+    records.push({ id: 'dph_' + Date.now().toString(36), date: new Date().toISOString().split('T')[0], photo: importPhotoData, note: 'JSON导入失败，但照片已保存', createdAt: new Date().toISOString() });
+    localStorage.setItem('driver_handwritten', JSON.stringify(records));
     importPhotoData = null;
   }
 
+  saveData(expenses);
+  saveTrips(trips);
   closeImportModal();
   showToast(`导入完成：报销 ${importedExpenses} 条，行程 ${importedTrips} 条`);
   renderAll();
