@@ -1592,6 +1592,7 @@ function updateStatsBar() {
     exportBar.className = 'export-bar';
     exportBar.innerHTML = `
       <button class="btn btn-outline btn-sm" onclick="openImportModal()">📥 导入</button>
+      <button class="btn btn-outline btn-sm" onclick="fixAdvanceDeduction()">💳 修正抵扣</button>
       <button class="btn btn-outline btn-sm" onclick="backupAll()">💾 备份</button>
       <button class="btn btn-outline btn-sm" onclick="exportExcel()">📊 导出</button>
     `;
@@ -2425,6 +2426,21 @@ function confirmImport() {
   saveTrips(trips);
   closeImportModal();
   showToast(`导入完成：报销 ${importedExpenses} 条，行程 ${importedTrips} 条`);
+  renderAll();
+}
+
+function fixAdvanceDeduction() {
+  var expenses = loadData();
+  var fixed = 0;
+  expenses.forEach(function(e) {
+    if (e.type !== '备用金' && !e.advanceDeducted) {
+      e.advanceDeducted = true;
+      fixed++;
+    }
+  });
+  if (fixed === 0) { showToast('所有费用已抵扣，无需修正'); return; }
+  saveData(expenses);
+  showToast('已修正 ' + fixed + ' 条费用为备用金抵扣');
   renderAll();
 }
 
