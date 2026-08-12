@@ -12,15 +12,42 @@ from urllib.parse import urlparse
 PORT = int(os.environ.get('PORT', 8080))
 DATA_FILE = os.path.join(os.path.dirname(__file__), 'shared-data.json')
 
-# 初始化数据文件
+# 种子数据：每次部署/重启后自动恢复，不再丢 7 月
+SEED_DATA = {
+    "expenses": [
+        {"id":"jul_0","date":"2026-06-30","type":"备用金","amount":3835.1,"description":"上月结转余额","advanceReceived":True,"advanceReceivedDate":"2026-06-30","advanceReceivedMethod":"微信转账","advanceReceivedAmount":3835.1,"status":"approved","reviewNote":"历史数据导入","submittedBy":"driver","role":"driver","createdAt":"2026-06-30T00:00:00.000Z"},
+        {"id":"jul_1","date":"2026-07-01","type":"过路费","amount":100,"description":"上海到崇明岛过路费","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-01T00:00:00.000Z"},
+        {"id":"jul_2","date":"2026-07-03","type":"加油/充电","amount":320,"status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-03T00:00:00.000Z"},
+        {"id":"jul_3","date":"2026-07-03","type":"停车费","amount":20,"description":"虹桥T2停车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-03T00:00:00.000Z"},
+        {"id":"jul_4","date":"2026-07-04","type":"停车费","amount":10,"description":"虹桥T2停车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-04T00:00:00.000Z"},
+        {"id":"jul_5","date":"2026-07-04","type":"停车费","amount":10,"description":"太仓路停车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-04T00:00:00.000Z"},
+        {"id":"jul_6","date":"2026-07-05","type":"停车费","amount":4,"description":"金桥大厦停车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-05T00:00:00.000Z"},
+        {"id":"jul_7","date":"2026-07-06","type":"加油/充电","amount":315,"status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-06T00:00:00.000Z"},
+        {"id":"jul_8","date":"2026-07-06","type":"停车费","amount":10,"description":"虹桥T2停车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-06T00:00:00.000Z"},
+        {"id":"jul_9","date":"2026-07-06","type":"洗车","amount":60,"description":"洗车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-06T00:00:00.000Z"},
+        {"id":"jul_10","date":"2026-07-09","type":"停车费","amount":12,"description":"上海站停车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-09T00:00:00.000Z"},
+        {"id":"jul_11","date":"2026-07-11","type":"停车费","amount":10,"description":"虹桥T2停车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-11T00:00:00.000Z"},
+        {"id":"jul_12","date":"2026-07-11","type":"加油/充电","amount":310,"status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-11T00:00:00.000Z"},
+        {"id":"jul_13","date":"2026-07-11","type":"其他","amount":44,"description":"备用水","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-11T00:00:00.000Z"},
+        {"id":"jul_14","date":"2026-07-12","type":"停车费","amount":8,"description":"仁恒海上源停车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-12T00:00:00.000Z"},
+        {"id":"jul_15","date":"2026-07-17","type":"停车费","amount":10,"description":"虹桥T2停车","status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-17T00:00:00.000Z"},
+        {"id":"jul_16","date":"2026-07-17","type":"加油/充电","amount":335,"status":"approved","advanceDeducted":True,"submittedBy":"driver","role":"driver","createdAt":"2026-07-17T00:00:00.000Z"},
+    ],
+    "trips": [],
+    "handwritten": [],
+    "updatedAt": ""
+}
+
+# 初始化数据文件（种子数据确保部署后自动恢复）
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
-        json.dump({
-            'expenses': [],
-            'trips': [],
-            'handwritten': [],
-            'updatedAt': ''
-        }, f)
+        json.dump(SEED_DATA, f, ensure_ascii=False)
+else:
+    with open(DATA_FILE, 'r') as f:
+        current = json.load(f)
+    if len(current.get('expenses', [])) == 0:
+        with open(DATA_FILE, 'w') as f:
+            json.dump(SEED_DATA, f, ensure_ascii=False)
 
 
 class SyncHandler(http.server.SimpleHTTPRequestHandler):
