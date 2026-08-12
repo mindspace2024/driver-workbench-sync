@@ -1628,6 +1628,8 @@ function updateAdvanceCheckbox() {
   if (balance > 0 && type !== '备用金' && type !== '') {
     cb.style.display = 'flex';
     document.getElementById('advanceBalText').textContent = '¥' + balance.toFixed(2);
+    // Auto-check: if advance balance exists, default to deducting from it
+    document.getElementById('useAdvance').checked = true;
   } else {
     cb.style.display = 'none';
     document.getElementById('useAdvance').checked = false;
@@ -2915,7 +2917,7 @@ submitExpense = function(event) {
 
   document.getElementById('expenseForm').reset();
   document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
-  document.getElementById('useAdvance').checked = false;
+  updateAdvanceCheckbox();
   document.getElementById('advanceCheckbox').style.display = 'none';
   removePhotoDirect();
   showToast('报销已提交 ✓');
