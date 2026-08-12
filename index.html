@@ -991,6 +991,35 @@ body {
   color: #0891b2;
 }
 .advance-balance-bar .adv-amount::before { content: '¥'; font-size: 15px; }
+/* Add Sub-tabs */
+.add-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--gray-100);
+  padding: 3px;
+}
+.add-tab {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.add-tab.active {
+  background: white;
+  color: var(--gray-900);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
 .advance-checkbox {
   display: flex;
   align-items: center;
@@ -1121,8 +1150,14 @@ body {
 </div>
 
 <div id="tabAdd" class="main-content tab-content" style="display:none">
-  <div class="form-card">
-    <div class="section-title">📝 新增报销</div>
+  <!-- Sub-tabs -->
+  <div class="add-tabs" id="addTabs">
+    <button class="add-tab active" id="addTabExpense" onclick="switchAddTab('expense')">💰 费用报销</button>
+    <button class="add-tab" id="addTabAdvance" onclick="switchAddTab('advance')">🏦 备用金申领</button>
+  </div>
+
+  <!-- 费用报销 Form -->
+  <div class="form-card" id="expenseFormCard">
     <form id="expenseForm" onsubmit="submitExpense(event)">
       <div class="form-group">
         <label>日期 *</label>
@@ -1132,7 +1167,6 @@ body {
         <label>费用类型 *</label>
         <select id="formType" required onchange="updateAdvanceCheckbox()">
           <option value="">请选择</option>
-          <option value="备用金">备用金</option>
           <option value="加油/充电">加油/充电</option>
           <option value="过路费">过路费</option>
           <option value="停车费">停车费</option>
@@ -1160,13 +1194,39 @@ body {
         </div>
         <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
       </div>
-      <!-- Advance deduction checkbox -->
       <div id="advanceCheckbox" style="display:none" class="advance-checkbox" onclick="document.getElementById('useAdvance').click()">
         <input type="checkbox" id="useAdvance"> <span>从备用金结余抵扣（结余 <strong id="advanceBalText">¥0</strong>）</span>
       </div>
-      <!-- Trip link hint -->
       <div id="tripLinkHint"></div>
       <button type="submit" class="btn btn-primary">✓ 提交报销</button>
+    </form>
+  </div>
+
+  <!-- 备用金申领 Form -->
+  <div class="form-card" id="advanceFormCard" style="display:none">
+    <form id="advanceForm" onsubmit="submitAdvance(event)">
+      <div class="form-group">
+        <label>日期 *</label>
+        <input type="date" id="advanceDate" required>
+      </div>
+      <div class="form-group">
+        <label>金额（元）*</label>
+        <input type="number" id="advanceAmount" step="0.01" min="0.01" placeholder="0.00" required>
+      </div>
+      <div class="form-group">
+        <label>领取方式</label>
+        <select id="advanceMethod">
+          <option value="微信转账">微信转账</option>
+          <option value="现金">现金</option>
+          <option value="银行转账">银行转账</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="advanceDesc" placeholder="可选，补充说明..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">✓ 提交申领</button>
     </form>
   </div>
 </div>
@@ -1508,6 +1568,9 @@ function switchTab(tab) {
   } else if (tab === 'add') {
     document.getElementById('tabAdd').style.display = 'block';
     document.getElementById('navAdd').classList.add('active');
+    // Default to expense sub-tab
+    switchAddTab(window._addTabMode || 'expense');
+    updateAdvanceCheckbox();
   } else if (tab === 'review') {
     document.getElementById('tabReview').style.display = 'block';
     document.getElementById('navReview').classList.add('active');
@@ -1903,6 +1966,51 @@ function renderReview() {
 }
 
 // ============ Expense CRUD ============
+// ============ Add Tab Sub-tabs ============
+function switchAddTab(mode) {
+  window._addTabMode = mode;
+  document.getElementById('addTabExpense').classList.toggle('active', mode === 'expense');
+  document.getElementById('addTabAdvance').classList.toggle('active', mode === 'advance');
+  document.getElementById('expenseFormCard').style.display = mode === 'expense' ? 'block' : 'none';
+  document.getElementById('advanceFormCard').style.display = mode === 'advance' ? 'block' : 'none';
+
+  if (mode === 'advance') {
+    document.getElementById('advanceDate').value = new Date().toISOString().split('T')[0];
+  } else {
+    updateAdvanceCheckbox();
+  }
+}
+
+function submitAdvance(event) {
+  event.preventDefault();
+  const advance = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    date: document.getElementById('advanceDate').value,
+    type: '备用金',
+    amount: parseFloat(document.getElementById('advanceAmount').value),
+    description: document.getElementById('advanceDesc').value.trim(),
+    advanceReceived: false,
+    advanceReceivedDate: '',
+    advanceReceivedMethod: document.getElementById('advanceMethod').value,
+    advanceReceivedAmount: 0,
+    advanceDeducted: false,
+    status: 'pending',
+    reviewNote: '',
+    role: 'driver',
+    submittedBy: 'driver',
+    createdAt: new Date().toISOString()
+  };
+
+  var expenses = loadData();
+  expenses.push(advance);
+  saveData(expenses);
+
+  document.getElementById('advanceForm').reset();
+  document.getElementById('advanceDate').value = new Date().toISOString().split('T')[0];
+  showToast('备用金申领已提交 ✓');
+  switchTab('records');
+}
+
 function submitExpense(event) {
   event.preventDefault();
   const expense = {
@@ -2934,7 +3042,6 @@ submitExpense = function(event) {
   document.getElementById('expenseForm').reset();
   document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
   updateAdvanceCheckbox();
-  document.getElementById('advanceCheckbox').style.display = 'none';
   removePhotoDirect();
   showToast('报销已提交 ✓');
   switchTab('records');
